@@ -17,6 +17,7 @@ export interface ExtensionState {
   searchEngine: string;
   fetchEnabled: boolean;
   fetchEngine: string;
+  compactStatus: boolean;
 }
 
 export const DEFAULT_STATE: ExtensionState = {
@@ -24,6 +25,7 @@ export const DEFAULT_STATE: ExtensionState = {
   searchEngine: "auto",
   fetchEnabled: true,
   fetchEngine: "auto",
+  compactStatus: false,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,9 +95,14 @@ export function setToolActive(pi: ExtensionAPI, name: string, enabled: boolean) 
 
 /** Build the status line label from the current state. */
 export function statusLabel(state: ExtensionState): string {
-  const s = state.searchEnabled ? state.searchEngine : "off";
-  const f = state.fetchEnabled ? state.fetchEngine : "off";
-  return `S ${s}  F ${f}`;
+  if (state.compactStatus) {
+    const s = state.searchEnabled ? state.searchEngine : "off";
+    const f = state.fetchEnabled ? state.fetchEngine : "off";
+    return `S ${s}  F ${f}`;
+  }
+  const s = state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off";
+  const f = state.fetchEnabled ? `fetch:on(${state.fetchEngine})` : "fetch:off";
+  return `${s} ${f}`;
 }
 
 // ── API layer ────────────────────────────────────────────────────────────────

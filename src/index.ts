@@ -175,6 +175,7 @@ export default function (pi: ExtensionAPI) {
         { id: "s-engine",  label: "Search Engine",  currentValue: state.searchEngine, values: ["auto", "native", "exa", "firecrawl", "parallel"] },
         { id: "f-enabled", label: "Web Fetch",      currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "f-engine",  label: "Fetch Engine",   currentValue: state.fetchEngine,  values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
+        { id: "compact",   label: "Status Bar",     currentValue: state.compactStatus ? "compact" : "verbose", values: ["verbose", "compact"] },
       ];
 
       await openSettings(ctx, "OpenRouter Web Tools", items, (id, val) => {
@@ -182,6 +183,7 @@ export default function (pi: ExtensionAPI) {
         else if (id === "s-engine") state.searchEngine = val;
         else if (id === "f-enabled") state.fetchEnabled = val === "on";
         else if (id === "f-engine") state.fetchEngine = val;
+        else if (id === "compact") state.compactStatus = val === "compact";
         persistState(pi, state);
         applyState(ctx);
       });

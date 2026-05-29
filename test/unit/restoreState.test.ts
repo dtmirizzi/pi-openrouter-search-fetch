@@ -29,7 +29,7 @@ describe("restoreState", () => {
   });
 
   it("returns persisted state from the last matching entry", () => {
-    const previous: ExtensionState = { searchEnabled: false, searchEngine: "exa", fetchEnabled: true, fetchEngine: "auto" };
+    const previous: ExtensionState = { searchEnabled: false, searchEngine: "exa", fetchEnabled: true, fetchEngine: "auto", compactStatus: false };
     const ctx = makeCtx([
       { type: "custom", customType: STATE_ENTRY, data: { searchEnabled: true, searchEngine: "auto", fetchEnabled: false, fetchEngine: "native" } },
       { type: "message" },

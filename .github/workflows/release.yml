@@ -8,7 +8,6 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
-  id-token: write
 
 jobs:
   release:
@@ -20,13 +19,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # Override the .npmrc auth token setup-node creates (it defaults to GITHUB_TOKEN)
-      # so that @semantic-release/npm uses the correct npm token.
+      # setup-node writes to NPM_CONFIG_USERCONFIG with the wrong token.
+      # Overwrite it with the real npm automation token.
       - run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "${NPM_CONFIG_USERCONFIG}"
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 

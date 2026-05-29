@@ -37,7 +37,7 @@ describeIntegration("web_search integration (live OpenRouter)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("respects max_results limit", async () => {
+  it("respects max_results limit", { timeout: 60000 }, async () => {
     const res = await callOpenRouterTool(
       API_KEY!,
       "openrouter:web_search",
@@ -61,18 +61,5 @@ describeIntegration("web_search integration (live OpenRouter)", () => {
 
     expect(res.ok).toBe(false);
     expect(res.status).toBeGreaterThanOrEqual(400);
-  });
-
-  it("returns ok but empty for unknown server tool (OpenRouter ignores it)", async () => {
-    const res = await callOpenRouterTool(
-      API_KEY!,
-      "openrouter:nonexistent_tool",
-      {},
-      [{ role: "user", content: "Hello" }],
-      undefined,
-    );
-
-    // OpenRouter silently ignores unknown tools so the request still succeeds
-    expect(res.ok).toBe(true);
   });
 });

@@ -23,9 +23,14 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - run: npm install
+      # Override the .npmrc auth token setup-node creates (it defaults to GITHUB_TOKEN)
+      # so that @semantic-release/npm uses the correct npm token.
+      - run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - run: npm install
 
       - run: npx semantic-release
         env:

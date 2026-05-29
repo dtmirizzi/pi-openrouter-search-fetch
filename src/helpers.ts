@@ -93,9 +93,9 @@ export function setToolActive(pi: ExtensionAPI, name: string, enabled: boolean) 
 
 /** Build the status line label from the current state. */
 export function statusLabel(state: ExtensionState): string {
-  const s = state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off";
-  const f = state.fetchEnabled ? `fetch:on(${state.fetchEngine})` : "fetch:off";
-  return `${s} ${f}`;
+  const s = state.searchEnabled ? state.searchEngine : "off";
+  const f = state.fetchEnabled ? state.fetchEngine : "off";
+  return `S ${s}  F ${f}`;
 }
 
 // ── API layer ────────────────────────────────────────────────────────────────

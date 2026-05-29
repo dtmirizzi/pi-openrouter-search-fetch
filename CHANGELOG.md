@@ -1,3 +1,10 @@
+# 1.0.0 (2026-05-29)
+
+
+### Features
+
+* initial release — web_search and web_fetch server tools ([777f655](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/777f655d339804d5590c7ce64ab45a0d447cebd0))
+
 # Changelog
 
 ## [0.1.0] - 2026-05-29

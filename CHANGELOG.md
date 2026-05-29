@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.0.0...v1.1.0) (2026-05-29)
+
+
+### Features
+
+* configurable status bar — verbose/compact toggle in /web-tools ([56b415c](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/56b415c7e162843dc2f2bb0138c4f0e13254d393))
+
 # 1.0.0 (2026-05-29)
 
 

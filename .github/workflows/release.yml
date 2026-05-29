@@ -10,8 +10,24 @@ permissions:
   pull-requests: write
 
 jobs:
-  release:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run test:unit
+      - run: npm run test:integration
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,8 +38,7 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # setup-node writes to NPM_CONFIG_USERCONFIG with the wrong token.
-      # Overwrite it with the real npm automation token.
+      # Override the .npmrc auth token that setup-node creates (it defaults to GITHUB_TOKEN)
       - run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "${NPM_CONFIG_USERCONFIG}"
         env:
@@ -31,7 +46,27 @@ jobs:
 
       - run: npm install
 
-      - run: npx semantic-release
+      - id: semantic
+        run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  smoke:
+    needs: release
+    runs-on: ubuntu-latest
+    if: needs.release.outputs.version != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wait for npm registry propagation
+        run: sleep 15
+
+      - name: Run post-deploy smoke test
+        run: bash test/smoke/post-deploy.sh
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

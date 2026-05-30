@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.3.0...v1.3.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* unterminated string in image_understand promptGuidelines ([55e6762](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/55e6762c9f2ffc4113bb74d77d78770276fc42ac))
+
 # [1.3.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.2.1...v1.3.0) (2026-05-30)
 
 

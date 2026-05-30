@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.1.0...v1.2.0) (2026-05-30)
+
+
+### Features
+
+* add image_generate, tts_speak, stt_transcribe tools ([e2a78c4](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/e2a78c44ab5f48e9340ec992fc039d807a92e849))
+
 # [1.1.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.0.0...v1.1.0) (2026-05-29)
 
 

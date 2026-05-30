@@ -37,7 +37,7 @@ describeIntegration("web_fetch integration (live OpenRouter)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("respects max_content_tokens", async () => {
+  it("respects max_content_tokens", { timeout: 60000 }, async () => {
     const res = await callOpenRouterTool(
       API_KEY!,
       "openrouter:web_fetch",

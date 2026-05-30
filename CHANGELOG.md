@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.4.1...v1.5.0) (2026-05-30)
+
+
+### Features
+
+* dynamic model selection per modality with OpenRouter API fetch ([3259ae1](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/3259ae134cea75bc4d03bb4b1740bd750ada2054))
+
 ## [1.4.1](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.4.0...v1.4.1) (2026-05-30)
 
 

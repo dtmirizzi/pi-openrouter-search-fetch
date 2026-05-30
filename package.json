@@ -1,6 +1,6 @@
 {
   "name": "pi-openrouter-multimodal",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "OpenRouter web search & web fetch server tools for Pi — independently toggleable, interactive settings UI",
   "keywords": [
     "pi-package"

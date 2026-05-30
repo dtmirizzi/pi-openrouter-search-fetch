@@ -1,18 +1,30 @@
-# pi-openrouter-multimodal
+# @dtmirizzi/pi-openrouter-multimodal
 
-OpenRouter multimodal tool integration for Pi. Provides five independently
-toggleable tools:
+OpenRouter multimodal tool integration for [Pi](https://github.com/earendil-works/pi-coding-agent).
+Provides **8 independently toggleable tools** with per-modality model selection
+and session-persistent settings.
 
-- **`web_search`** — Server-side web search with real-time results
-- **`web_fetch`** — Fetch page content from a URL (web, docs, PDFs)
-- **`image_generate`** — Text-to-image generation via OpenRouter chat completions
-- **`tts_speak`** — Text-to-speech via OpenRouter `/audio/speech` endpoint
-- **`stt_transcribe`** — Speech-to-text via OpenRouter `/audio/transcriptions` endpoint
+| Tool | What it does |
+|------|-------------|
+| **`web_search`** | Server-side web search with real-time results |
+| **`web_fetch`** | Fetch page content from a URL (web, docs, PDFs) |
+| **`image_generate`** | Text-to-image generation via OpenRouter chat completions |
+| **`image_understand`** | Analyze images via vision models |
+| **`video_understand`** | Analyze videos (YouTube links work with Gemini) |
+| **`pdf_read`** | Extract and analyze PDF content |
+| **`tts_speak`** | Text-to-speech via OpenRouter `/audio/speech` endpoint |
+| **`stt_transcribe`** | Speech-to-text via OpenRouter `/audio/transcriptions` endpoint |
 
 ## Install
 
 ```bash
-pi install npm:pi-openrouter-multimodal
+pi install npm:@dtmirizzi/pi-openrouter-multimodal
+```
+
+Or from a local checkout:
+
+```bash
+pi install /path/to/pi-openrouter-multimodal
 ```
 
 ## API Key
@@ -27,15 +39,25 @@ The extension resolves the OpenRouter API key from (priority order):
 
 | Command | Description |
 |---------|-------------|
-| `/web-tools` | Unified settings panel for all tools |
-| `/web-search` | Toggle `web_search`, configure search engine |
-| `/web-fetch` | Toggle `web_fetch`, configure fetch engine |
+| `/web-tools` | Toggle tools on/off and configure search/fetch engines |
+| `/web-models` | Select models per modality (image, vision, video, PDF, TTS voice, STT) |
+| `/web-search` | Toggle `web_search` and configure search engine |
+| `/web-fetch` | Toggle `web_fetch` and configure fetch engine |
 
 Each command opens an interactive overlay. Use `↑↓` to navigate, `←→` to
-toggle, `Esc` to close. Settings persist across sessions.
+cycle values, `Esc` to close. Settings persist across sessions and survive
+compaction, shutdown, and tree navigation.
 
-The `/web-tools` panel also includes toggles for `image_generate`,
-`tts_speak`, `stt_transcribe`, and a verbose/compact status-bar setting.
+### `/web-tools`
+
+Toggle each tool on/off and set search/fetch engine preferences. Also includes
+a verbose/compact status-bar display toggle.
+
+### `/web-models`
+
+Select the model for each modality from a list fetched live from the OpenRouter
+API at startup. Falls back to a comprehensive built-in list if the API is
+unavailable.
 
 ## Tools
 
@@ -63,41 +85,100 @@ The `/web-tools` panel also includes toggles for `image_generate`,
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `prompt` | string | required | Text prompt describing the image |
-| `model` | string | google/gemini-3.1-flash-image-preview | Image gen model |
+| `model` | string | state | Override the default model from `/web-models` |
 
-Supported models: `google/gemini-3.1-flash-image-preview`,
-`google/gemini-2.5-flash-image`, `black-forest-labs/flux.2-pro`,
-`black-forest-labs/flux.2-flex`.
+Selected via `/web-models`. Models are fetched live from OpenRouter at startup;
+fallback list includes Gemini Flash Image, GPT-5 Image, FLUX.2, Seedream,
+Riverflow, Recraft, Grok Imagine, and more.
+
+### image_understand
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | string | required | Image URL or base64 data URL |
+| `prompt` | string | Describe this image in detail | Analysis prompt |
+| `model` | string | state | Override default from `/web-models` |
+
+### video_understand
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | string | required | Video URL (YouTube links work with Gemini) |
+| `prompt` | string | Describe what happens in this video | Analysis prompt |
+| `model` | string | state | Override default from `/web-models` |
+
+### pdf_read
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | string | required | URL of the PDF document |
+| `prompt` | string | Summarize this document | Analysis prompt |
+| `model` | string | state | Override default from `/web-models` |
+| `engine` | string | cloudflare-ai | cloudflare-ai (free), mistral-ocr (scanned docs), or native |
 
 ### tts_speak
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `text` | string | required | Text to convert to speech |
-| `model` | string | openai/gpt-4o-mini-tts | TTS model |
-| `voice` | string | alloy | Voice name (model-dependent) |
-
-Supported providers: OpenAI, ElevenLabs, Google, Mistral, Cartesia, xAI.
+| `model` | string | state | Override default from `/web-models` |
+| `voice` | string | state | Override default from `/web-models` |
 
 ### stt_transcribe
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `audio` | string | required | Base64-encoded audio data |
-| `format` | string | required | Audio format: wav, mp3, flac, m4a, ogg, webm, aac |
-| `model` | string | openai/whisper-large-v3 | STT model |
+| `format` | string | required | wav, mp3, flac, m4a, ogg, webm, aac |
+| `model` | string | state | Override default from `/web-models` |
 | `language` | string | — | ISO-639-1 language code (optional) |
 
 ## How It Works
 
 All tools proxy requests through OpenRouter's API:
 
-- **web_search/web_fetch** — Chat completions with server tool definitions
+- **web_search / web_fetch** — Chat completions with server tool definitions
   (`openrouter:web_search` / `openrouter:web_fetch`)
 - **image_generate** — Chat completions with `modalities: ["image", "text"]`
-  and compatible image generation models
+  on the selected image generation model
+- **image_understand / video_understand** — Chat completions with
+  multimodal content blocks (`image_url`, `video_url`)
+- **pdf_read** — Chat completions with file content block and
+  `file-parser` plugin
 - **tts_speak** — Direct call to `/api/v1/audio/speech`
 - **stt_transcribe** — Direct call to `/api/v1/audio/transcriptions`
+
+### Model Discovery
+
+On startup, the extension fetches available models from
+`GET /api/v1/models?output_modalities=...` and caches them for use in the
+`/web-models` settings panel. If the API is unreachable, a comprehensive
+set of fallback models is used.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test               # all tests
+npm run test:unit      # unit tests only
+npm run test:integration  # requires OPENROUTER_API_KEY
+
+# Format and lint
+npm run fmt            # format all files
+npm run lint           # lint + fix all files
+npm run check          # format + lint + organize imports
+npm run check:ci       # strict CI check (format + lint, no writes)
+```
+
+The repo uses [Biome](https://biomejs.dev/) for formatting and linting.
+CI enforces both on every push and PR.
+
+## Assets
+
+<a href="assets/logo.svg"><img src="assets/logo.png" width="128" height="128" alt="Logo"></a>
 
 ## References
 
@@ -106,3 +187,4 @@ All tools proxy requests through OpenRouter's API:
 - [OpenRouter Multimodal overview](https://openrouter.ai/docs/features/multimodal/overview)
 - [OpenRouter Image Generation](https://openrouter.ai/docs/features/multimodal/image-generation)
 - [OpenRouter TTS](https://openrouter.ai/docs/features/multimodal/text-to-speech)
+- [OpenRouter List Models API](https://openrouter.ai/api/v1/models)

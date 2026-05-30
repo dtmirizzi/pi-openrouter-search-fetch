@@ -1,5 +1,5 @@
 /**
- * pi-openrouter-multimodal
+ * @dtmirizzi/pi-openrouter-multimodal
  *
  * Adds OpenRouter multimodal tools to Pi:
  *
@@ -141,6 +141,14 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_tree", async (_event, ctx) => {
     state = restoreState(ctx);
     applyState(ctx);
+  });
+
+  pi.on("session_shutdown", async (_event, ctx) => {
+    persistState(pi, state);
+  });
+
+  pi.on("session_compact", async (_event, ctx) => {
+    persistState(pi, state);
   });
 
   // ── /web-tools (unified settings) ───────────────────────────────────────

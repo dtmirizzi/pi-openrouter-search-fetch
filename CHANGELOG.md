@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.0...v1.5.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* add top-level index.ts entry point so Pi shows package name instead of 'src' ([ffae98c](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/ffae98c62da10cbdba599228a918c3880ab75689))
+
 # [1.5.0](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.4.1...v1.5.0) (2026-05-30)
 
 

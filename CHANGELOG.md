@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.4.0...v1.4.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* persist state on session shutdown and compaction ([18abbdf](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/18abbdff68033a7494af38979edc8c1b3b813599))
+
 # [1.4.0](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.3.2...v1.4.0) (2026-05-30)
 
 

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C3CE1"/>
+      <stop offset="100%" style="stop-color:#9B59F6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Outer ring / orbit -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#6C3CE1" stroke-width="2" opacity="0.2"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#6C3CE1" stroke-width="1.5" opacity="0.15"/>
+  <circle cx="256" cy="256" r="100" fill="none" stroke="#6C3CE1" stroke-width="1" opacity="0.1"/>
+
+  <!-- Main "P" letterform -->
+  <text x="256" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="280" font-weight="700" fill="url(#accent)" text-anchor="middle" dominant-baseline="middle">P</text>
+
+  <!-- Modality dots on orbit -->
+  <!-- Search (magnifying glass) - top -->
+  <circle cx="256" cy="76" r="18" fill="#6C3CE1" opacity="0.9"/>
+  <text x="256" y="82" font-family="system-ui" font-size="20" fill="white" text-anchor="middle">🔍</text>
+
+  <!-- Image/eye - top right -->
+  <circle cx="386" cy="126" r="16" fill="#9B59F6" opacity="0.8"/>
+  <text x="386" y="132" font-family="system-ui" font-size="16" fill="white" text-anchor="middle">👁</text>
+
+  <!-- Globe/fetch - bottom right -->
+  <circle cx="386" cy="386" r="16" fill="#9B59F6" opacity="0.8"/>
+  <text x="386" y="392" font-family="system-ui" font-size="16" fill="white" text-anchor="middle">🌐</text>
+
+  <!-- TTS (sound waves) - bottom left -->
+  <circle cx="126" cy="386" r="16" fill="#9B59F6" opacity="0.8"/>
+  <text x="126" y="392" font-family="system-ui" font-size="16" fill="white" text-anchor="middle">🔊</text>
+
+  <!-- STT (mic) - top left -->
+  <circle cx="126" cy="126" r="16" fill="#9B59F6" opacity="0.8"/>
+  <text x="126" y="132" font-family="system-ui" font-size="16" fill="white" text-anchor="middle">🎤</text>
+
+  <!-- Connection lines from center to dots -->
+  <line x1="256" y1="256" x2="256" y2="94" stroke="#6C3CE1" stroke-width="1.5" opacity="0.4"/>
+  <line x1="256" y1="256" x2="370" y2="142" stroke="#6C3CE1" stroke-width="1.5" opacity="0.4"/>
+  <line x1="256" y1="256" x2="370" y2="370" stroke="#6C3CE1" stroke-width="1.5" opacity="0.4"/>
+  <line x1="256" y1="256" x2="142" y2="370" stroke="#6C3CE1" stroke-width="1.5" opacity="0.4"/>
+  <line x1="256" y1="256" x2="142" y2="142" stroke="#6C3CE1" stroke-width="1.5" opacity="0.4"/>
+</svg>

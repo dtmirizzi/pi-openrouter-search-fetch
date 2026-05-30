@@ -732,6 +732,7 @@ export default function (pi: ExtensionAPI) {
         model,
         undefined,
         signal,
+        8192,
       );
 
       if (!result.ok) throw new Error(`Image understanding failed: ${result.error}`);
@@ -783,6 +784,7 @@ export default function (pi: ExtensionAPI) {
         model,
         undefined,
         signal,
+        16384,
       );
 
       if (!result.ok) throw new Error(`Video understanding failed: ${result.error}`);
@@ -851,7 +853,7 @@ export default function (pi: ExtensionAPI) {
           ? undefined
           : [{ id: "file-parser" as const, pdf: { engine } }];
 
-      const result = await callChatMultimodal(apiKey, prompt, contentBlock, model, plugins, signal);
+      const result = await callChatMultimodal(apiKey, prompt, contentBlock, model, plugins, signal, 65536);
 
       if (!result.ok) throw new Error(`PDF read failed: ${result.error}`);
       return { content: [{ type: "text", text: result.text! }], details: { model, engine, size: dl.mimeType } };

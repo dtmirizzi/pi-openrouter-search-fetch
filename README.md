@@ -178,7 +178,7 @@ CI enforces both on every push and PR.
 
 ## Assets
 
-<a href="assets/logo.svg"><img src="assets/logo.png" width="128" height="128" alt="Logo"></a>
+<img src="assets/logo.png" width="128" height="128" alt="Logo">
 
 ## References
 

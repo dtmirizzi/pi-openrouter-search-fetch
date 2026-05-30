@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.3.1...v1.3.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* update smoke test for scoped package name ([1454511](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/1454511dd3344f6863e2d99d829efc3841fdb018))
+
 ## [1.3.1](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.3.0...v1.3.1) (2026-05-30)
 
 

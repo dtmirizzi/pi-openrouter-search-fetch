@@ -17,6 +17,9 @@ export interface ExtensionState {
   searchEngine: string;
   fetchEnabled: boolean;
   fetchEngine: string;
+  imageEnabled: boolean;
+  ttsEnabled: boolean;
+  sttEnabled: boolean;
   compactStatus: boolean;
 }
 
@@ -25,6 +28,9 @@ export const DEFAULT_STATE: ExtensionState = {
   searchEngine: "auto",
   fetchEnabled: true,
   fetchEngine: "auto",
+  imageEnabled: false,
+  ttsEnabled: false,
+  sttEnabled: false,
   compactStatus: false,
 };
 
@@ -96,13 +102,23 @@ export function setToolActive(pi: ExtensionAPI, name: string, enabled: boolean) 
 /** Build the status line label from the current state. */
 export function statusLabel(state: ExtensionState): string {
   if (state.compactStatus) {
-    const s = state.searchEnabled ? state.searchEngine : "off";
-    const f = state.fetchEnabled ? state.fetchEngine : "off";
-    return `S ${s}  F ${f}`;
+    const parts: string[] = [];
+    if (state.searchEnabled) parts.push(`S ${state.searchEngine}`);
+    else parts.push("S off");
+    if (state.fetchEnabled) parts.push(`F ${state.fetchEngine}`);
+    else parts.push("F off");
+    if (state.imageEnabled) parts.push("Img");
+    if (state.ttsEnabled) parts.push("TTS");
+    if (state.sttEnabled) parts.push("STT");
+    return parts.join("  ");
   }
-  const s = state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off";
-  const f = state.fetchEnabled ? `fetch:on(${state.fetchEngine})` : "fetch:off";
-  return `${s} ${f}`;
+  const parts: string[] = [];
+  parts.push(state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off");
+  parts.push(state.fetchEnabled ? `fetch:on(${state.fetchEngine})` : "fetch:off");
+  if (state.imageEnabled) parts.push("image:on");
+  if (state.ttsEnabled) parts.push("tts:on");
+  if (state.sttEnabled) parts.push("stt:on");
+  return parts.join(" ");
 }
 
 // ── API layer ────────────────────────────────────────────────────────────────
@@ -169,4 +185,122 @@ export function extractResponse(
   }
 
   return {};
+}
+
+// ── Multimodal API helpers ──────────────────────────────────────────────────
+
+/** Call OpenRouter image generation. Returns base64 data URLs from the response. */
+export async function generateImage(
+  apiKey: string,
+  prompt: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; images?: string[]; error?: string }> {
+  try {
+    const res = await fetch(`${OPENROUTER_API}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    }
+
+    const data = (await res.json()) as Record<string, unknown>;
+    const choice = (data["choices"] as Array<Record<string, unknown>>)?.[0];
+    const msg = choice?.["message"] as Record<string, unknown> | undefined;
+    const imagesRaw = msg?.["images"] as Array<Record<string, unknown>> | undefined;
+
+    if (imagesRaw?.length) {
+      const urls: string[] = [];
+      for (const img of imagesRaw) {
+        const imageUrl = img["image_url"] as Record<string, unknown> | undefined;
+        const url = imageUrl?.["url"] as string | undefined;
+        if (url) urls.push(url);
+      }
+      if (urls.length) return { ok: true, images: urls };
+    }
+
+    return { ok: false, error: "No images in response" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
+}
+
+/** Call OpenRouter TTS. Returns raw audio bytes. */
+export async function speakText(
+  apiKey: string,
+  text: string,
+  model: string,
+  voice: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; buffer?: ArrayBuffer; contentType?: string; error?: string }> {
+  try {
+    const res = await fetch(`${OPENROUTER_API}/audio/speech`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, input: text, voice, response_format: "mp3" }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    }
+
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get("content-type") || "audio/mpeg";
+    return { ok: true, buffer, contentType };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
+}
+
+/** Call OpenRouter STT. Returns transcribed text. */
+export async function transcribeAudio(
+  apiKey: string,
+  audioBase64: string,
+  format: string,
+  model: string,
+  language?: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; text?: string; error?: string }> {
+  try {
+    const res = await fetch(`${OPENROUTER_API}/audio/transcriptions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, audio: audioBase64, format, language }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    }
+
+    const data = (await res.json()) as Record<string, unknown>;
+    const txt = data["text"] as string | undefined;
+    return { ok: true, text: txt || "" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
 }

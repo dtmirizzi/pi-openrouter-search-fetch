@@ -219,17 +219,15 @@ export async function fetchOpenRouterModels(apiKey: string): Promise<{
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-export function resolveApiKey(ctx: {
-  modelRegistry: { find: (provider: string, id?: string) => { apiKey?: string } | undefined };
-}): string | undefined {
+export async function resolveApiKey(ctx: {
+  modelRegistry: { getApiKeyForProvider: (provider: string) => Promise<string | undefined> };
+}): Promise<string | undefined> {
   const envKey = process.env.OPENROUTER_API_KEY;
   if (envKey) return envKey;
 
   try {
-    for (const id of ["auto", undefined]) {
-      const m = ctx.modelRegistry.find("openrouter", id as string | undefined);
-      if (m?.apiKey) return m.apiKey;
-    }
+    const key = await ctx.modelRegistry.getApiKeyForProvider("openrouter");
+    if (key) return key;
   } catch {
     /* ok */
   }
@@ -424,12 +422,13 @@ export async function generateImage(
     }
 
     // Format 2: content is an array with image_url blocks
-    const content = msg?.content;
+    const content = msg?.content as Array<Record<string, unknown>> | Record<string, unknown> | string | null | undefined;
     if (Array.isArray(content)) {
       const urls: string[] = [];
       for (const block of content) {
-        if (block && typeof block === "object" && block.type === "image_url") {
-          const url = block.image_url?.url as string | undefined;
+        if (block && typeof block === "object" && (block as Record<string, string>)?.type === "image_url") {
+          const imageUrl = (block as Record<string, Record<string, string>>)?.image_url;
+          const url = imageUrl?.url;
           if (url) urls.push(url);
         }
       }
@@ -437,8 +436,9 @@ export async function generateImage(
     }
 
     // Format 3: single image_url in content
-    if (content && typeof content === "object" && content.type === "image_url") {
-      const url = content.image_url?.url as string | undefined;
+    if (content && typeof content === "object" && !Array.isArray(content) && (content as Record<string, string>)?.type === "image_url") {
+      const imageUrl = (content as Record<string, Record<string, string>>)?.image_url;
+      const url = imageUrl?.url;
       if (url) return { ok: true, images: [url] };
     }
 

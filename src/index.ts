@@ -166,7 +166,7 @@ export default function (pi: ExtensionAPI) {
     applyState(ctx);
 
     // Fetch latest models from OpenRouter in background (non-blocking)
-    const apiKey = resolveApiKey(ctx);
+    const apiKey = await resolveApiKey(ctx);
     if (apiKey) {
       fetchOpenRouterModels(apiKey)
         .then((fetched) => {
@@ -410,13 +410,13 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const engine = params.engine || state.searchEngine;
-      onUpdate?.({ content: [{ type: "text", text: `Searching: "${params.query}"...` }] });
+      onUpdate?.({ content: [{ type: "text", text: `Searching: "${params.query}"...` }], details: {} });
 
       const toolParams: Record<string, unknown> = {};
       if (engine && engine !== "auto") toolParams.engine = engine;
@@ -480,13 +480,13 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const engine = params.engine || state.fetchEngine;
-      onUpdate?.({ content: [{ type: "text", text: `Fetching: ${params.url}...` }] });
+      onUpdate?.({ content: [{ type: "text", text: `Fetching: ${params.url}...` }], details: {} });
 
       const toolParams: Record<string, unknown> = {};
       if (engine && engine !== "auto") toolParams.engine = engine;
@@ -550,13 +550,13 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const model = (params.model as string) || state.imageModel;
-      onUpdate?.({ content: [{ type: "text", text: `Generating image with ${model}...` }] });
+      onUpdate?.({ content: [{ type: "text", text: `Generating image with ${model}...` }], details: {} });
 
       const result = await generateImage(apiKey, params.prompt, model, signal);
 
@@ -607,14 +607,14 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const model = (params.model as string) || state.ttsModel;
       const voice = (params.voice as string) || state.ttsVoice;
-      onUpdate?.({ content: [{ type: "text", text: `Speaking: "${params.text.substring(0, 80)}..."` }] });
+      onUpdate?.({ content: [{ type: "text", text: `Speaking: "${params.text.substring(0, 80)}..."` }], details: {} });
 
       const result = await speakText(apiKey, params.text, model, voice, signal);
 
@@ -666,13 +666,13 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const model = (params.model as string) || state.sttModel;
-      onUpdate?.({ content: [{ type: "text", text: "Transcribing audio..." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Transcribing audio..." }], details: {} });
 
       const result = await transcribeAudio(apiKey, params.audio, params.format, model, params.language, signal);
 
@@ -715,14 +715,14 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const model = (params.model as string) || state.visionModel;
       const prompt = (params.prompt as string) || "Describe this image in detail";
-      onUpdate?.({ content: [{ type: "text", text: "Analyzing image..." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Analyzing image..." }], details: {} });
 
       const result = await callChatMultimodal(
         apiKey,
@@ -766,14 +766,14 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
       const model = (params.model as string) || state.videoModel;
       const prompt = (params.prompt as string) || "Describe what happens in this video";
-      onUpdate?.({ content: [{ type: "text", text: "Analyzing video (this may take a while)..." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Analyzing video (this may take a while)..." }], details: {} });
 
       const result = await callChatMultimodal(
         apiKey,
@@ -823,7 +823,7 @@ export default function (pi: ExtensionAPI) {
           details: { error: "wrong_provider" },
         };
       }
-      const apiKey = resolveApiKey(ctx);
+      const apiKey = await resolveApiKey(ctx);
       if (!apiKey) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
@@ -831,7 +831,7 @@ export default function (pi: ExtensionAPI) {
       const model = (params.model as string) || state.pdfModel;
       const prompt = (params.prompt as string) || "Summarize this document";
       const engine = (params.engine as string) || "cloudflare-ai";
-      onUpdate?.({ content: [{ type: "text", text: `Reading PDF: ${params.url}...` }] });
+      onUpdate?.({ content: [{ type: "text", text: `Reading PDF: ${params.url}...` }], details: {} });
 
       const plugins = [{ id: "file-parser", pdf: { engine } }];
       const result = await callChatMultimodal(

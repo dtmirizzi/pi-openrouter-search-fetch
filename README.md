@@ -1,5 +1,9 @@
 # @dtmirizzi/pi-openrouter-multimodal
 
+<p align="center">
+  <img src="assets/logo.png" width="256" height="256" alt="Logo">
+</p>
+
 OpenRouter multimodal tool integration for [Pi](https://github.com/earendil-works/pi-coding-agent).
 Provides **8 independently toggleable tools** with per-modality model selection
 and session-persistent settings.

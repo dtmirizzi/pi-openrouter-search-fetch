@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Post-deploy smoke test for pi-openrouter-multimodal
+# Post-deploy smoke test for @dtmirizzi/pi-openrouter-multimodal
 # Runs AFTER semantic-release publishes to npm.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PACKAGE="pi-openrouter-multimodal"
+PACKAGE="@dtmirizzi/pi-openrouter-multimodal"
+PKG_DIR="node_modules/@dtmirizzi/pi-openrouter-multimodal"
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
@@ -18,7 +19,7 @@ npm install "$PACKAGE@latest" 2>&1 | tail -3
 
 # Verify expected files exist
 for f in src/index.ts CHANGELOG.md README.md package.json; do
-  if [ ! -f "node_modules/$PACKAGE/$f" ]; then
+  if [ ! -f "$PKG_DIR/$f" ]; then
     echo "FAIL: Expected $f not found"
     exit 1
   fi
@@ -27,9 +28,9 @@ done
 
 # Verify package.json metadata
 node -e "
-const pkg = JSON.parse(require('fs').readFileSync('node_modules/$PACKAGE/package.json','utf8'));
+const pkg = JSON.parse(require('fs').readFileSync('$PKG_DIR/package.json','utf8'));
 const asserts = [
-  [pkg.name === '$PACKAGE', 'name'],
+  [pkg.name === '@dtmirizzi/pi-openrouter-multimodal', 'name'],
   [Array.isArray(pkg.keywords) && pkg.keywords.includes('pi-package'), 'keyword'],
   [Array.isArray(pkg.files) && pkg.files.length > 0, 'files'],
   [typeof pkg.pi === 'object' && Array.isArray(pkg.pi.extensions), 'pi.extensions'],

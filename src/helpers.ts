@@ -107,14 +107,17 @@ export const FALLBACK_VISION_MODELS: ModelOption[] = [
 ];
 
 export const FALLBACK_VIDEO_MODELS: ModelOption[] = [
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (YouTube URLs)" },
+  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash (YouTube URLs)" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (YouTube URLs)" },
+  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash Preview (YouTube URLs)" },
 ];
 
 export const FALLBACK_PDF_MODELS: ModelOption[] = [
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (native PDF, no plugin)" },
+  { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash (native PDF, no plugin)" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (native PDF, no plugin)" },
+  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash Preview (native PDF)" },
   { id: "anthropic/claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
   { id: "openai/gpt-4o", label: "GPT-4o" },
 ];
@@ -498,7 +501,7 @@ export async function transcribeAudio(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, audio: audioBase64, format, language }),
+      body: JSON.stringify({ model, input_audio: { data: audioBase64, format }, language }),
       signal,
     });
 
@@ -510,6 +513,31 @@ export async function transcribeAudio(
     const data = (await res.json()) as Record<string, unknown>;
     const txt = data.text as string | undefined;
     return { ok: true, text: txt || "" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
+}
+
+// ── File download helpers ──────────────────────────────────────────────────
+
+/**
+ * Download a file from a URL and return it as a base64 data URL.
+ * This allows local/private files to be sent to models that can't fetch URLs.
+ */
+export async function downloadAndEncodeFile(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; dataUrl?: string; mimeType?: string; error?: string }> {
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}` };
+    }
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get("content-type") || "application/octet-stream";
+    const base64 = Buffer.from(buffer).toString("base64");
+    return { ok: true, dataUrl: `data:${contentType};base64,${base64}`, mimeType: contentType };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, error: msg };
@@ -530,11 +558,12 @@ export async function callChatMultimodal(
   model: string,
   plugins?: Array<Record<string, unknown>>,
   signal?: AbortSignal,
+  maxTokens?: number,
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
   const body: Record<string, unknown> = {
     model,
     messages: [{ role: "user", content: [{ type: "text", text: prompt }, contentBlock] }],
-    max_tokens: 4096,
+    max_tokens: maxTokens ?? 8192,
   };
   if (plugins) body.plugins = plugins;
 

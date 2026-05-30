@@ -33,6 +33,7 @@ import {
   callChatMultimodal,
   callOpenRouterTool,
   DEFAULT_STATE,
+  downloadAndEncodeFile,
   extractResponse,
   FALLBACK_IMAGE_MODELS,
   FALLBACK_PDF_MODELS,
@@ -752,7 +753,7 @@ export default function (pi: ExtensionAPI) {
       "YouTube links are supported with Google Gemini models.",
     ],
     parameters: Type.Object({
-      url: Type.String({ description: "Video URL (YouTube link for Gemini, or direct video URL)" }),
+      url: Type.String({ description: "Video URL (YouTube links work with Gemini on AI Studio; direct MP4 URLs are not supported)" }),
       prompt: Type.Optional(
         Type.String({ description: "What to analyze (default: 'Describe what happens in this video')" }),
       ),
@@ -795,13 +796,14 @@ export default function (pi: ExtensionAPI) {
     name: PDF_TOOL,
     label: "PDF Read",
     description:
-      "Extract and analyze content from a PDF via OpenRouter. Provide a PDF URL. " +
-      "Use /web-models to select the PDF model. " +
-      "Only functional with OpenRouter models.",
+      "Extract and analyze content from a PDF. Downloads the PDF, converts to base64, " +
+      "and sends to a compatible model. Defaults to Gemini native support (no plugin needed). " +
+      "Provide a PDF URL. Use /web-models to select the model.",
     promptGuidelines: [
       "Use pdf_read when you need to extract or analyze content from a PDF document.",
       "Provide the PDF URL and optionally specify what to extract or summarize.",
-      "By default uses cloudflare-ai engine (free) for text extraction.",
+      "By default downloads the PDF and sends to a Gemini model (native support, free).",
+      "For scanned documents, use engine mistral-ocr (costs $2/1000 pages).",
     ],
     parameters: Type.Object({
       url: Type.String({ description: "URL of the PDF document" }),
@@ -811,7 +813,7 @@ export default function (pi: ExtensionAPI) {
       model: Type.Optional(Type.String({ description: "Model (overrides default from /web-models)" })),
       engine: Type.Optional(
         Type.String({
-          description: "PDF engine: cloudflare-ai (default, free), mistral-ocr (scanned docs), or native",
+          description: "PDF engine: native (default, no plugin, Gemini models only), mistral-ocr ($2/1000 pages, best for scanned docs), or cloudflare-ai (free, experimental)",
         }),
       ),
     }),
@@ -830,21 +832,29 @@ export default function (pi: ExtensionAPI) {
 
       const model = (params.model as string) || state.pdfModel;
       const prompt = (params.prompt as string) || "Summarize this document";
-      const engine = (params.engine as string) || "cloudflare-ai";
-      onUpdate?.({ content: [{ type: "text", text: `Reading PDF: ${params.url}...` }], details: {} });
+      const engine = (params.engine as string) || "native";
+      onUpdate?.({ content: [{ type: "text", text: `Downloading PDF: ${params.url}...` }], details: {} });
 
-      const plugins = [{ id: "file-parser", pdf: { engine } }];
-      const result = await callChatMultimodal(
-        apiKey,
-        prompt,
-        { type: "file", file: { filename: "document.pdf", file_data: params.url } },
-        model,
-        plugins,
-        signal,
-      );
+      // Download the PDF and convert to base64 data URL (models can't always fetch URLs)
+      const dl = await downloadAndEncodeFile(params.url, signal);
+      if (!dl.ok) throw new Error(`Failed to download PDF: ${dl.error}`);
+
+      onUpdate?.({ content: [{ type: "text", text: "Reading PDF content..." }], details: {} });
+
+      const contentBlock = {
+        type: "file" as const,
+        file: { filename: "document.pdf", file_data: dl.dataUrl! },
+      };
+
+      const plugins =
+        engine === "native"
+          ? undefined
+          : [{ id: "file-parser" as const, pdf: { engine } }];
+
+      const result = await callChatMultimodal(apiKey, prompt, contentBlock, model, plugins, signal);
 
       if (!result.ok) throw new Error(`PDF read failed: ${result.error}`);
-      return { content: [{ type: "text", text: result.text! }], details: { model, engine } };
+      return { content: [{ type: "text", text: result.text! }], details: { model, engine, size: dl.mimeType } };
     },
   });
 }

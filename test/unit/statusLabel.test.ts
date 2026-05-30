@@ -8,11 +8,18 @@ const base: ExtensionState = {
   fetchEnabled: true,
   fetchEngine: "auto",
   imageEnabled: false,
+  imageModel: "google/gemini-2.5-flash-image-preview",
   visionEnabled: false,
+  visionModel: "google/gemini-2.5-flash",
   videoEnabled: false,
+  videoModel: "google/gemini-2.5-flash",
   pdfEnabled: false,
+  pdfModel: "google/gemini-2.5-flash",
   ttsEnabled: false,
+  ttsModel: "openai/gpt-4o-mini-tts",
+  ttsVoice: "alloy",
   sttEnabled: false,
+  sttModel: "openai/whisper-large-v3",
   compactStatus: false,
 };
 
@@ -34,11 +41,11 @@ describe("statusLabel (verbose mode — default)", () => {
   });
   it("all toggles on", () => {
     expect(statusLabel({ ...base, imageEnabled: true, visionEnabled: true, videoEnabled: true, pdfEnabled: true, ttsEnabled: true, sttEnabled: true }))
-      .toBe("search:on(auto) fetch:on(auto) img:on vision:on video:on pdf:on tts:on stt:on");
+      .toBe("search:on(auto) fetch:on(auto) img:on(gemini-2.5-flash-image-preview) vision:on(gemini-2.5-flash) video:on(gemini-2.5-flash) pdf:on(gemini-2.5-flash) tts:on(gpt-4o-mini-tts) stt:on(whisper-large-v3)");
   });
   it("only new tools on", () => {
     expect(statusLabel({ ...base, searchEnabled: false, fetchEnabled: false, visionEnabled: true, pdfEnabled: true }))
-      .toBe("search:off fetch:off vision:on pdf:on");
+      .toBe("search:off fetch:off vision:on(gemini-2.5-flash) pdf:on(gemini-2.5-flash)");
   });
 });
 
@@ -58,6 +65,6 @@ describe("statusLabel (compact mode)", () => {
   });
   it("all toggles on", () => {
     expect(statusLabel({ ...c, imageEnabled: true, visionEnabled: true, videoEnabled: true, pdfEnabled: true, ttsEnabled: true, sttEnabled: true }))
-      .toBe("S auto  F auto  Img  Vis  Vid  PDF  TTS  STT");
+      .toBe("S auto  F auto  Img:gemini-2.5-flash-image-preview  Vis:gemini-2.5-flash  Vid:gemini-2.5-flash  PDF:gemini-2.5-flash  TTS:gpt-4o-mini-tts  STT:whisper-large-v3");
   });
 });

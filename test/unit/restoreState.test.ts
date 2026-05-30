@@ -29,7 +29,26 @@ describe("restoreState", () => {
   });
 
   it("returns persisted state from the last matching entry", () => {
-    const previous: ExtensionState = { searchEnabled: false, searchEngine: "exa", fetchEnabled: true, fetchEngine: "auto", imageEnabled: false, visionEnabled: false, videoEnabled: false, pdfEnabled: false, ttsEnabled: false, sttEnabled: false, compactStatus: false };
+    const previous: ExtensionState = {
+      searchEnabled: false,
+      searchEngine: "exa",
+      fetchEnabled: true,
+      fetchEngine: "auto",
+      imageEnabled: false,
+      imageModel: "google/gemini-2.5-flash-image-preview",
+      visionEnabled: false,
+      visionModel: "google/gemini-2.5-flash",
+      videoEnabled: false,
+      videoModel: "google/gemini-2.5-flash",
+      pdfEnabled: false,
+      pdfModel: "google/gemini-2.5-flash",
+      ttsEnabled: false,
+      ttsModel: "openai/gpt-4o-mini-tts",
+      ttsVoice: "alloy",
+      sttEnabled: false,
+      sttModel: "openai/whisper-large-v3",
+      compactStatus: false,
+    };
     const ctx = makeCtx([
       { type: "custom", customType: STATE_ENTRY, data: { searchEnabled: true, searchEngine: "auto", fetchEnabled: false, fetchEngine: "native" } },
       { type: "message" },
@@ -65,5 +84,10 @@ describe("restoreState", () => {
     expect(state.searchEngine).toBe(DEFAULT_STATE.searchEngine);
     expect(state.fetchEnabled).toBe(DEFAULT_STATE.fetchEnabled);
     expect(state.fetchEngine).toBe(DEFAULT_STATE.fetchEngine);
+    expect(state.imageModel).toBe(DEFAULT_STATE.imageModel);
+    expect(state.visionModel).toBe(DEFAULT_STATE.visionModel);
+    expect(state.ttsModel).toBe(DEFAULT_STATE.ttsModel);
+    expect(state.ttsVoice).toBe(DEFAULT_STATE.ttsVoice);
+    expect(state.sttModel).toBe(DEFAULT_STATE.sttModel);
   });
 });

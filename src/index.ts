@@ -8,8 +8,12 @@
  *   image_generate  — text-to-image generation via chat completions
  *   tts_speak       — text-to-speech via /audio/speech
  *   stt_transcribe  — speech-to-text via /audio/transcriptions
+ *   image_understand — analyze images via vision models
+ *   video_understand — analyze videos via Gemini
+ *   pdf_read        — extract/analyze PDFs
  *
- * Each tool is independently toggleable. Unified settings at /web-tools.
+ * Each tool is independently toggleable with model selection.
+ * Settings at /web-tools and /web-models.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -38,8 +42,16 @@ import {
   speakText,
   transcribeAudio,
   callChatMultimodal,
+  fetchOpenRouterModels,
+  FALLBACK_IMAGE_MODELS,
+  FALLBACK_VISION_MODELS,
+  FALLBACK_VIDEO_MODELS,
+  FALLBACK_PDF_MODELS,
+  FALLBACK_TTS_MODELS,
+  FALLBACK_TTS_VOICES,
+  FALLBACK_STT_MODELS,
 } from "./helpers";
-import type { ExtensionState } from "./helpers";
+import type { ExtensionState, ModelOption } from "./helpers";
 import { DEFAULT_STATE } from "./helpers";
 
 const SEARCH_SRV = "openrouter:web_search";
@@ -52,6 +64,52 @@ const VIDEO_TOOL  = "video_understand";
 const PDF_TOOL    = "pdf_read";
 const TTS_TOOL    = "tts_speak";
 const STT_TOOL    = "stt_transcribe";
+
+// ── Model options cache ────────────────────────────────────────────────────
+
+let imageModels: ModelOption[] = [...FALLBACK_IMAGE_MODELS];
+let visionModels: ModelOption[] = [...FALLBACK_VISION_MODELS];
+let videoModels: ModelOption[] = [...FALLBACK_VIDEO_MODELS];
+let pdfModels: ModelOption[] = [...FALLBACK_PDF_MODELS];
+let ttsModels: ModelOption[] = [...FALLBACK_TTS_MODELS];
+let ttsVoices: ModelOption[] = [...FALLBACK_TTS_VOICES];
+let sttModels: ModelOption[] = [...FALLBACK_STT_MODELS];
+
+/** Settings helpers */
+function modelToSettingValue(m: ModelOption): string {
+  return m.id;
+}
+
+function settingValueToModel(
+  value: string,
+  options: ModelOption[],
+): string {
+  // value is the model id
+  const found = options.find((m) => m.id === value);
+  return found ? found.id : options[0]?.id ?? value;
+}
+
+function modelSettingItems(
+  options: ModelOption[],
+  currentId: string,
+): { id: string; label: string; currentValue: string; values: string[] } {
+  const values = options.map(modelToSettingItem);
+  return {
+    id: "",
+    label: "",
+    currentValue: currentId,
+    values,
+  };
+}
+
+function modelToSettingItem(m: ModelOption): string {
+  return m.label;
+}
+
+function labelToModelId(label: string, options: ModelOption[]): string {
+  const found = options.find((m) => m.label === label);
+  return found ? found.id : options[0]?.id ?? label;
+}
 
 // ── Settings UI builder ─────────────────────────────────────────────────────
 
@@ -76,6 +134,7 @@ function openSettings(
         })(),
       );
 
+      // Make the list tall enough for all items
       const settingsList = new SettingsList(
         items,
         Math.min(items.length + 4, 22),
@@ -92,7 +151,7 @@ function openSettings(
         render() {
           return [
             "",
-            theme.fg("dim", "↑↓ navigate  ·  ←→ toggle  ·  Esc close"),
+            theme.fg("dim", "↑↓ navigate  ·  ←→ cycle value  ·  Esc close"),
           ];
         }
         invalidate() {}
@@ -133,9 +192,28 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.setStatus("web-tools", statusLabel(state));
   }
 
+  // ── Fetch live model list from OpenRouter on startup ──────────────────
+
   pi.on("session_start", async (_event, ctx) => {
     state = restoreState(ctx);
     applyState(ctx);
+
+    // Fetch latest models from OpenRouter in background (non-blocking)
+    const apiKey = resolveApiKey(ctx);
+    if (apiKey) {
+      fetchOpenRouterModels(apiKey)
+        .then((fetched) => {
+          if (fetched.image.length > 0) imageModels = fetched.image;
+          if (fetched.vision.length > 0) visionModels = fetched.vision;
+          if (fetched.video.length > 0) videoModels = fetched.video;
+          if (fetched.pdf.length > 0) pdfModels = fetched.pdf;
+          if (fetched.tts.length > 0) ttsModels = fetched.tts;
+          if (fetched.stt.length > 0) sttModels = fetched.stt;
+        })
+        .catch(() => {
+          // Keep fallbacks silently
+        });
+    }
   });
 
   pi.on("session_tree", async (_event, ctx) => {
@@ -143,31 +221,31 @@ export default function (pi: ExtensionAPI) {
     applyState(ctx);
   });
 
-  pi.on("session_shutdown", async (_event, ctx) => {
+  pi.on("session_shutdown", async (_event, _ctx) => {
     persistState(pi, state);
   });
 
-  pi.on("session_compact", async (_event, ctx) => {
+  pi.on("session_compact", async (_event, _ctx) => {
     persistState(pi, state);
   });
 
-  // ── /web-tools (unified settings) ───────────────────────────────────────
+  // ── /web-tools (toggle tools) ──────────────────────────────────────────
 
   pi.registerCommand("web-tools", {
-    description: "Configure all OpenRouter tools — search, fetch, image gen, TTS, STT",
+    description: "Configure all OpenRouter tools — toggle tools and set engines",
     handler: async (_args, ctx) => {
       const items: SettingItem[] = [
-        { id: "s-enabled", label: "Web Search",     currentValue: state.searchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "s-engine",  label: "Search Engine",  currentValue: state.searchEngine, values: ["auto", "native", "exa", "firecrawl", "parallel"] },
-        { id: "f-enabled", label: "Web Fetch",      currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "f-engine",  label: "Fetch Engine",   currentValue: state.fetchEngine,  values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
+        { id: "s-enabled", label: "Web Search",      currentValue: state.searchEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "s-engine",  label: "Search Engine",   currentValue: state.searchEngine, values: ["auto", "native", "exa", "firecrawl", "parallel"] },
+        { id: "f-enabled", label: "Web Fetch",        currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "f-engine",  label: "Fetch Engine",    currentValue: state.fetchEngine, values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
         { id: "i-enabled", label: "Image Generate",  currentValue: state.imageEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "v-enabled", label: "Image Understand",currentValue: state.visionEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "d-enabled", label: "Video Understand",currentValue: state.videoEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "p-enabled", label: "PDF Read",        currentValue: state.pdfEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "t-enabled", label: "TTS (Speak)",     currentValue: state.ttsEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "v-enabled", label: "Image Understand", currentValue: state.visionEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "d-enabled", label: "Video Understand", currentValue: state.videoEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "p-enabled", label: "PDF Read",         currentValue: state.pdfEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "t-enabled", label: "TTS (Speak)",      currentValue: state.ttsEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "r-enabled", label: "STT (Transcribe)", currentValue: state.sttEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "compact",   label: "Status Bar",     currentValue: state.compactStatus ? "compact" : "verbose", values: ["verbose", "compact"] },
+        { id: "compact",   label: "Status Bar",       currentValue: state.compactStatus ? "compact" : "verbose", values: ["verbose", "compact"] },
       ];
 
       await openSettings(ctx, "OpenRouter Web Tools", items, (id, val) => {
@@ -182,6 +260,52 @@ export default function (pi: ExtensionAPI) {
         else if (id === "t-enabled") state.ttsEnabled = val === "on";
         else if (id === "r-enabled") state.sttEnabled = val === "on";
         else if (id === "compact") state.compactStatus = val === "compact";
+        persistState(pi, state);
+        applyState(ctx);
+      });
+    },
+  });
+
+  // ── /web-models (select models) ────────────────────────────────────────
+
+  pi.registerCommand("web-models", {
+    description: "Select models for each modality — image, vision, video, PDF, TTS, STT",
+    handler: async (_args, ctx) => {
+      const imgValues = imageModels.map(modelToSettingItem);
+      const visValues = visionModels.map(modelToSettingItem);
+      const vidValues = videoModels.map(modelToSettingItem);
+      const pdfValues = pdfModels.map(modelToSettingItem);
+      const ttsValues = ttsModels.map(modelToSettingItem);
+      const voxValues = ttsVoices.map(modelToSettingItem);
+      const sttValues = sttModels.map(modelToSettingItem);
+
+      // Current labels for display
+      const imgCurrent = imageModels.find((m) => m.id === state.imageModel)?.label ?? imageModels[0]?.label ?? state.imageModel;
+      const visCurrent = visionModels.find((m) => m.id === state.visionModel)?.label ?? visionModels[0]?.label ?? state.visionModel;
+      const vidCurrent = videoModels.find((m) => m.id === state.videoModel)?.label ?? videoModels[0]?.label ?? state.videoModel;
+      const pdfCurrent = pdfModels.find((m) => m.id === state.pdfModel)?.label ?? pdfModels[0]?.label ?? state.pdfModel;
+      const ttsCurrent = ttsModels.find((m) => m.id === state.ttsModel)?.label ?? ttsModels[0]?.label ?? state.ttsModel;
+      const voxCurrent = state.ttsVoice;
+      const sttCurrent = sttModels.find((m) => m.id === state.sttModel)?.label ?? sttModels[0]?.label ?? state.sttModel;
+
+      const items: SettingItem[] = [
+        { id: "i-model", label: "Image Model",  currentValue: imgCurrent, values: imgValues },
+        { id: "v-model", label: "Vision Model",  currentValue: visCurrent, values: visValues },
+        { id: "d-model", label: "Video Model",  currentValue: vidCurrent, values: vidValues },
+        { id: "p-model", label: "PDF Model",    currentValue: pdfCurrent, values: pdfValues },
+        { id: "t-model", label: "TTS Model",    currentValue: ttsCurrent, values: ttsValues },
+        { id: "t-voice", label: "TTS Voice",    currentValue: voxCurrent, values: voxValues },
+        { id: "r-model", label: "STT Model",    currentValue: sttCurrent, values: sttValues },
+      ];
+
+      await openSettings(ctx, "OpenRouter Model Selection", items, (id, val) => {
+        if (id === "i-model") state.imageModel = labelToModelId(val, imageModels);
+        else if (id === "v-model") state.visionModel = labelToModelId(val, visionModels);
+        else if (id === "d-model") state.videoModel = labelToModelId(val, videoModels);
+        else if (id === "p-model") state.pdfModel = labelToModelId(val, pdfModels);
+        else if (id === "t-model") state.ttsModel = labelToModelId(val, ttsModels);
+        else if (id === "t-voice") state.ttsVoice = val;
+        else if (id === "r-model") state.sttModel = labelToModelId(val, sttModels);
         persistState(pi, state);
         applyState(ctx);
       });
@@ -346,15 +470,14 @@ export default function (pi: ExtensionAPI) {
       "Generate images from text prompts via OpenRouter. " +
       "Choose from compatible image generation models. " +
       "Returns base64-encoded PNG images. " +
-      "Models include google/gemini-3.1-flash-image-preview, black-forest-labs/flux.2-pro, and more.",
+      "Use /web-models to see and select available image models.",
     promptGuidelines: [
       "Use image_generate when the user asks to create, generate, or draw an image.",
-      "Supported models: google/gemini-3.1-flash-image-preview, google/gemini-2.5-flash-image, black-forest-labs/flux.2-pro, black-forest-labs/flux.2-flex.",
       "Images are returned as base64 data URLs — display them inline when possible.",
     ],
     parameters: Type.Object({
       prompt: Type.String({ description: "Text prompt describing the image to generate" }),
-      model: Type.Optional(Type.String({ description: "Image gen model (default: google/gemini-3.1-flash-image-preview)" })),
+      model: Type.Optional(Type.String({ description: "Image gen model (overrides default from /web-models)" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
@@ -366,8 +489,8 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "google/gemini-3.1-flash-image-preview";
-      onUpdate?.({ content: [{ type: "text", text: `Generating image: "${params.prompt}"...` }] });
+      const model = (params.model as string) || state.imageModel;
+      onUpdate?.({ content: [{ type: "text", text: `Generating image with ${model}...` }] });
 
       const result = await generateImage(apiKey, params.prompt, model, signal);
 
@@ -376,7 +499,6 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (result.images?.length) {
-        // Save to temp file so Pi can display it
         const tmpPath = join(tmpdir(), `pi-image-${Date.now()}.png`);
         const b64 = result.images[0].replace(/^data:image\/\w+;base64,/, "");
         writeFileSync(tmpPath, Buffer.from(b64, "base64"));
@@ -401,15 +523,14 @@ export default function (pi: ExtensionAPI) {
     description:
       "Convert text to speech via OpenRouter's /audio/speech endpoint. " +
       "Returns an MP3 audio file saved to a temp location. " +
-      "Supports many voices across OpenAI, ElevenLabs, Google, and more.",
+      "Use /web-models to select TTS model and voice.",
     promptGuidelines: [
       "Use tts_speak when the user asks to speak text aloud or convert text to audio.",
-      "Default model: openai/gpt-4o-mini-tts. Default voice: alloy.",
     ],
     parameters: Type.Object({
       text: Type.String({ description: "Text to convert to speech" }),
-      model: Type.Optional(Type.String({ description: "TTS model (default: openai/gpt-4o-mini-tts)" })),
-      voice: Type.Optional(Type.String({ description: "Voice name (default: alloy). Check model docs for supported voices." })),
+      model: Type.Optional(Type.String({ description: "TTS model (overrides default from /web-models)" })),
+      voice: Type.Optional(Type.String({ description: "Voice name (overrides default from /web-models)" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
@@ -421,8 +542,8 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "openai/gpt-4o-mini-tts";
-      const voice = (params.voice as string) || "alloy";
+      const model = (params.model as string) || state.ttsModel;
+      const voice = (params.voice as string) || state.ttsVoice;
       onUpdate?.({ content: [{ type: "text", text: `Speaking: "${params.text.substring(0, 80)}..."` }] });
 
       const result = await speakText(apiKey, params.text, model, voice, signal);
@@ -450,16 +571,16 @@ export default function (pi: ExtensionAPI) {
     description:
       "Transcribe audio to text via OpenRouter's /audio/transcriptions endpoint. " +
       "Provide base64-encoded audio and its format. " +
-      "Supports wav, mp3, flac, m4a, ogg, webm, aac.",
+      "Supports wav, mp3, flac, m4a, ogg, webm, aac. " +
+      "Use /web-models to select the STT model.",
     promptGuidelines: [
       "Use stt_transcribe when the user provides an audio file and wants it transcribed.",
       "The audio must be base64-encoded. Use the 'read' tool first to get the file contents.",
-      "Default model: openai/whisper-large-v3.",
     ],
     parameters: Type.Object({
       audio: Type.String({ description: "Base64-encoded audio data" }),
       format: Type.String({ description: "Audio format: wav, mp3, flac, m4a, ogg, webm, aac" }),
-      model: Type.Optional(Type.String({ description: "STT model (default: openai/whisper-large-v3)" })),
+      model: Type.Optional(Type.String({ description: "STT model (overrides default from /web-models)" })),
       language: Type.Optional(Type.String({ description: "ISO-639-1 language code for better accuracy" })),
     }),
 
@@ -472,7 +593,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "openai/whisper-large-v3";
+      const model = (params.model as string) || state.sttModel;
       onUpdate?.({ content: [{ type: "text", text: "Transcribing audio..." }] });
 
       const result = await transcribeAudio(apiKey, params.audio, params.format, model, params.language, signal);
@@ -496,6 +617,7 @@ export default function (pi: ExtensionAPI) {
     description:
       "Analyze an image via OpenRouter vision models. " +
       "Provide an image URL or base64 data and a prompt describing what to analyze. " +
+      "Use /web-models to select the vision model. " +
       "Only functional with OpenRouter models.",
     promptGuidelines: [
       "Use image_understand when you need to analyze or describe an image.",
@@ -505,7 +627,7 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       url: Type.String({ description: "Image URL or base64 data URL (data:image/...;base64,...)" }),
       prompt: Type.Optional(Type.String({ description: "What to analyze (default: 'Describe this image in detail')" })),
-      model: Type.Optional(Type.String({ description: "Vision model (default: google/gemini-2.5-flash)" })),
+      model: Type.Optional(Type.String({ description: "Vision model (overrides default from /web-models)" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
@@ -517,7 +639,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const model = (params.model as string) || state.visionModel;
       const prompt = (params.prompt as string) || "Describe this image in detail";
       onUpdate?.({ content: [{ type: "text", text: "Analyzing image..." }] });
 
@@ -542,15 +664,16 @@ export default function (pi: ExtensionAPI) {
     label: "Video Understand",
     description:
       "Analyze a video via OpenRouter. Provide a video URL (YouTube links work with Gemini models). " +
+      "Use /web-models to select the video model. " +
       "Only functional with OpenRouter models.",
     promptGuidelines: [
       "Use video_understand when you need to analyze or summarize video content.",
-      "For Google Gemini models, YouTube links are supported.",
+      "YouTube links are supported with Google Gemini models.",
     ],
     parameters: Type.Object({
       url: Type.String({ description: "Video URL (YouTube link for Gemini, or direct video URL)" }),
       prompt: Type.Optional(Type.String({ description: "What to analyze (default: 'Describe what happens in this video')" })),
-      model: Type.Optional(Type.String({ description: "Video model (default: google/gemini-2.5-flash)" })),
+      model: Type.Optional(Type.String({ description: "Video model (overrides default from /web-models)" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
@@ -562,7 +685,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const model = (params.model as string) || state.videoModel;
       const prompt = (params.prompt as string) || "Describe what happens in this video";
       onUpdate?.({ content: [{ type: "text", text: "Analyzing video (this may take a while)..." }] });
 
@@ -587,6 +710,7 @@ export default function (pi: ExtensionAPI) {
     label: "PDF Read",
     description:
       "Extract and analyze content from a PDF via OpenRouter. Provide a PDF URL. " +
+      "Use /web-models to select the PDF model. " +
       "Only functional with OpenRouter models.",
     promptGuidelines: [
       "Use pdf_read when you need to extract or analyze content from a PDF document.",
@@ -596,7 +720,7 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       url: Type.String({ description: "URL of the PDF document" }),
       prompt: Type.Optional(Type.String({ description: "What to extract/analyze (default: 'Summarize this document')" })),
-      model: Type.Optional(Type.String({ description: "Model (default: google/gemini-2.5-flash)" })),
+      model: Type.Optional(Type.String({ description: "Model (overrides default from /web-models)" })),
       engine: Type.Optional(Type.String({ description: "PDF engine: cloudflare-ai (default, free), mistral-ocr (scanned docs), or native" })),
     }),
 
@@ -609,7 +733,7 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
       }
 
-      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const model = (params.model as string) || state.pdfModel;
       const prompt = (params.prompt as string) || "Summarize this document";
       const engine = (params.engine as string) || "cloudflare-ai";
       onUpdate?.({ content: [{ type: "text", text: `Reading PDF: ${params.url}...` }] });

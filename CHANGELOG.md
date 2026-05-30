@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.3.2...v1.4.0) (2026-05-30)
+
+
+### Features
+
+* add logo assets (SVG + PNG) ([0ba8320](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/0ba832021f7bf4f768ccf313fea151975a17548c))
+
 ## [1.3.2](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.3.1...v1.3.2) (2026-05-30)
 
 

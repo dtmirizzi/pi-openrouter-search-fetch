@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.2.0...v1.2.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* include helpers.ts in npm files, simplify smoke test ([d78ca45](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/d78ca45e6e973d10046dae482af86ec07adf5142))
+
 # [1.2.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.1.0...v1.2.0) (2026-05-30)
 
 

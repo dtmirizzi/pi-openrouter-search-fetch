@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.2.1...v1.3.0) (2026-05-30)
+
+
+### Features
+
+* add image_understand, video_understand, pdf_read tools ([709fd28](https://github.com/dtmirizzi/pi-openrouter-search-fetch/commit/709fd282f4290330b11416877fda7b9193a9f2fb))
+
 ## [1.2.1](https://github.com/dtmirizzi/pi-openrouter-search-fetch/compare/v1.2.0...v1.2.1) (2026-05-30)
 
 

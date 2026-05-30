@@ -490,7 +490,7 @@ export default function (pi: ExtensionAPI) {
       "Provide an image URL or base64 data and a prompt describing what to analyze. " +
       "Only functional with OpenRouter models.",
     promptGuidelines: [
-      "Use image_understand when you need to analyze or describe an image.
+      "Use image_understand when you need to analyze or describe an image.",
       "Provide the image URL and a specific prompt about what to look for.",
       "Works with both public URLs and base64-encoded image data.",
     ],

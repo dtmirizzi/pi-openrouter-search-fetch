@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Post-deploy smoke test for pi-openrouter-search-fetch
+# Post-deploy smoke test for pi-openrouter-multimodal
 # Runs AFTER semantic-release publishes to npm.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PACKAGE="pi-openrouter-search-fetch"
+PACKAGE="pi-openrouter-multimodal"
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 

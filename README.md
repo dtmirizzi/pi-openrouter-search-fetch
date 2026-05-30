@@ -1,4 +1,4 @@
-# pi-openrouter-search-fetch
+# pi-openrouter-multimodal
 
 OpenRouter multimodal tool integration for Pi. Provides five independently
 toggleable tools:
@@ -12,7 +12,7 @@ toggleable tools:
 ## Install
 
 ```bash
-pi install npm:pi-openrouter-search-fetch
+pi install npm:pi-openrouter-multimodal
 ```
 
 ## API Key

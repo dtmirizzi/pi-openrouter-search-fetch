@@ -10,7 +10,7 @@ import { join } from "node:path";
 
 // ── State types ──────────────────────────────────────────────────────────────
 
-export const STATE_ENTRY = "pi-openrouter-search-fetch-config";
+export const STATE_ENTRY = "pi-openrouter-multimodal-config";
 
 export interface ExtensionState {
   searchEnabled: boolean;

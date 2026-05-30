@@ -1,5 +1,5 @@
 /**
- * pi-openrouter-search-fetch
+ * pi-openrouter-multimodal
  *
  * Adds OpenRouter multimodal tools to Pi:
  *

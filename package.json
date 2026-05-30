@@ -1,5 +1,5 @@
 {
-  "name": "pi-openrouter-search-fetch",
+  "name": "pi-openrouter-multimodal",
   "version": "1.3.1",
   "description": "OpenRouter web search & web fetch server tools for Pi — independently toggleable, interactive settings UI",
   "keywords": [
@@ -7,13 +7,13 @@
   ],
   "license": "MIT",
   "author": "dtmirizzi",
-  "homepage": "https://github.com/dtmirizzi/pi-openrouter-search-fetch#readme",
+  "homepage": "https://github.com/dtmirizzi/pi-openrouter-multimodal#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dtmirizzi/pi-openrouter-search-fetch.git"
+    "url": "git+https://github.com/dtmirizzi/pi-openrouter-multimodal.git"
   },
   "bugs": {
-    "url": "https://github.com/dtmirizzi/pi-openrouter-search-fetch/issues"
+    "url": "https://github.com/dtmirizzi/pi-openrouter-multimodal/issues"
   },
   "type": "module",
   "engines": {

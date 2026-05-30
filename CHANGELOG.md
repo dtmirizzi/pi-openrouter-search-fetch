@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.2...v1.5.3) (2026-05-30)
+
+
+### Bug Fixes
+
+* improve model fetching and selector ([1cf2309](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/1cf2309e033be8570a5bbf1b13139e3fc0017fc2))
+
 ## [1.5.2](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.1...v1.5.2) (2026-05-30)
 
 

@@ -39,7 +39,7 @@ export const DEFAULT_STATE: ExtensionState = {
   fetchEnabled: true,
   fetchEngine: "auto",
   imageEnabled: false,
-  imageModel: "google/gemini-2.5-flash-image-preview",
+  imageModel: "google/gemini-3.1-flash-image-preview",
   visionEnabled: false,
   visionModel: "google/gemini-2.5-flash",
   videoEnabled: false,
@@ -65,28 +65,34 @@ export interface ModelOption {
 // Fetched from OpenRouter API on startup; these are the static fallbacks.
 
 export const FALLBACK_IMAGE_MODELS: ModelOption[] = [
-  { id: "google/gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image Preview" },
-  { id: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image" },
-  { id: "google/gemini-3.1-flash-image-preview", label: "Gemini 3.1 Flash Image Preview" },
-  { id: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image Preview" },
+  { id: "google/gemini-3.1-flash-image-preview", label: "Nano Banana 2 (Gemini 3.1 Flash Image Preview)" },
+  { id: "google/gemini-2.5-flash-image", label: "Nano Banana (Gemini 2.5 Flash Image)" },
+  { id: "google/gemini-3-pro-image-preview", label: "Nano Banana Pro (Gemini 3 Pro Image Preview)" },
+  { id: "openai/gpt-5.4-image-2", label: "GPT-5.4 Image 2" },
   { id: "openai/gpt-5-image", label: "GPT-5 Image" },
   { id: "openai/gpt-5-image-mini", label: "GPT-5 Image Mini" },
-  { id: "openai/gpt-5.4-image-2", label: "GPT-5.4 Image 2" },
   { id: "black-forest-labs/flux.2-pro", label: "FLUX.2 Pro" },
   { id: "black-forest-labs/flux.2-flex", label: "FLUX.2 Flex" },
   { id: "black-forest-labs/flux.2-max", label: "FLUX.2 Max" },
   { id: "black-forest-labs/flux.2-klein-4b", label: "FLUX.2 Klein 4B" },
   { id: "bytedance-seed/seedream-4.5", label: "Seedream 4.5" },
-  { id: "sourceful/riverflow-v2-fast-preview", label: "Riverflow V2 Fast" },
-  { id: "sourceful/riverflow-v2-standard-preview", label: "Riverflow V2 Standard" },
-  { id: "sourceful/riverflow-v2-max-preview", label: "Riverflow V2 Max" },
+  { id: "x-ai/grok-imagine-image-quality", label: "Grok Imagine Image Quality" },
   { id: "sourceful/riverflow-v2-pro", label: "Riverflow V2 Pro" },
-  { id: "sourceful/riverflow-v2-fast", label: "Riverflow V2 Fast (stable)" },
-  { id: "recraft/recraft-v4", label: "Recraft V4" },
-  { id: "recraft/recraft-v4-pro", label: "Recraft V4 Pro" },
-  { id: "recraft/recraft-v4.1", label: "Recraft V4.1" },
+  { id: "sourceful/riverflow-v2-max-preview", label: "Riverflow V2 Max Preview" },
+  { id: "sourceful/riverflow-v2-standard-preview", label: "Riverflow V2 Standard Preview" },
+  { id: "sourceful/riverflow-v2-fast-preview", label: "Riverflow V2 Fast Preview" },
+  { id: "sourceful/riverflow-v2-fast", label: "Riverflow V2 Fast" },
   { id: "recraft/recraft-v4.1-pro", label: "Recraft V4.1 Pro" },
-  { id: "x-ai/grok-imagine-image-quality", label: "Grok Imagine" },
+  { id: "recraft/recraft-v4.1", label: "Recraft V4.1" },
+  { id: "recraft/recraft-v4.1-pro-vector", label: "Recraft V4.1 Pro Vector" },
+  { id: "recraft/recraft-v4.1-vector", label: "Recraft V4.1 Vector" },
+  { id: "recraft/recraft-v4.1-utility-pro", label: "Recraft V4.1 Utility Pro" },
+  { id: "recraft/recraft-v4.1-utility", label: "Recraft V4.1 Utility" },
+  { id: "recraft/recraft-v4-pro", label: "Recraft V4 Pro" },
+  { id: "recraft/recraft-v4-pro-vector", label: "Recraft V4 Pro Vector" },
+  { id: "recraft/recraft-v4", label: "Recraft V4" },
+  { id: "recraft/recraft-v4-vector", label: "Recraft V4 Vector" },
+  { id: "recraft/recraft-v3", label: "Recraft V3" },
 ];
 
 export const FALLBACK_VISION_MODELS: ModelOption[] = [
@@ -143,6 +149,7 @@ export const FALLBACK_STT_MODELS: ModelOption[] = [
 
 interface OpenRouterModel {
   id: string;
+  name?: string;
   context_length?: number;
   architecture?: {
     input_modalities?: string[];
@@ -183,7 +190,11 @@ export async function fetchOpenRouterModels(apiKey: string): Promise<{
       const id = m.id;
       const outp = m.architecture?.output_modalities ?? [];
       const inp = m.architecture?.input_modalities ?? [];
-      const label = id.split("/").pop() ?? id;
+      // Use the API-provided name for a human-readable label, fall back to provider:model form
+      const label = m.name ? `${m.name}` : id;
+
+      // Skip the auto-router — it's not a real model to select
+      if (id === "openrouter/auto" || id.endsWith(":free")) continue;
 
       if (outp.includes("image")) image.push({ id, label });
       if (outp.includes("audio")) tts.push({ id, label });

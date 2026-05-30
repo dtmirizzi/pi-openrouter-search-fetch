@@ -79,29 +79,6 @@ function _modelToSettingValue(m: ModelOption): string {
   return m.id;
 }
 
-function _settingValueToModel(value: string, options: ModelOption[]): string {
-  // value is the model id
-  const found = options.find((m) => m.id === value);
-  return found ? found.id : (options[0]?.id ?? value);
-}
-
-function _modelSettingItems(
-  options: ModelOption[],
-  currentId: string,
-): { id: string; label: string; currentValue: string; values: string[] } {
-  const values = options.map(modelToSettingItem);
-  return {
-    id: "",
-    label: "",
-    currentValue: currentId,
-    values,
-  };
-}
-
-function modelToSettingItem(m: ModelOption): string {
-  return m.label;
-}
-
 function labelToModelId(label: string, options: ModelOption[]): string {
   const found = options.find((m) => m.label === label);
   return found ? found.id : (options[0]?.id ?? label);
@@ -301,13 +278,13 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("web-models", {
     description: "Select models for each modality — image, vision, video, PDF, TTS, STT",
     handler: async (_args, ctx) => {
-      const imgValues = imageModels.map(modelToSettingItem);
-      const visValues = visionModels.map(modelToSettingItem);
-      const vidValues = videoModels.map(modelToSettingItem);
-      const pdfValues = pdfModels.map(modelToSettingItem);
-      const ttsValues = ttsModels.map(modelToSettingItem);
-      const voxValues = ttsVoices.map(modelToSettingItem);
-      const sttValues = sttModels.map(modelToSettingItem);
+      const imgValues = imageModels.map((m) => m.label);
+      const visValues = visionModels.map((m) => m.label);
+      const vidValues = videoModels.map((m) => m.label);
+      const pdfValues = pdfModels.map((m) => m.label);
+      const ttsValues = ttsModels.map((m) => m.label);
+      const voxValues = ttsVoices.map((m) => m.id);
+      const sttValues = sttModels.map((m) => m.label);
 
       // Current labels for display
       const imgCurrent =

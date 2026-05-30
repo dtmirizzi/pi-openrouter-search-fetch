@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.3...v1.6.0) (2026-05-30)
+
+
+### Features
+
+* update repo logo with OpenRouter-inspired design ([6a6208d](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/6a6208d9bb04dfc737229d1aa1b283a930684e14))
+
 ## [1.5.3](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.2...v1.5.3) (2026-05-30)
 
 

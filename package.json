@@ -1,7 +1,7 @@
 {
-  "name": "pi-openrouter-multimodal",
+  "name": "@dtmirizzi/pi-openrouter-multimodal",
   "version": "1.5.1",
-  "description": "OpenRouter web search & web fetch server tools for Pi — independently toggleable, interactive settings UI",
+  "description": "OpenRouter multimodal tools for Pi — search, fetch, image gen, vision, video, PDF, TTS, STT",
   "keywords": [
     "pi-package"
   ],
@@ -14,6 +14,9 @@
   },
   "bugs": {
     "url": "https://github.com/dtmirizzi/pi-openrouter-multimodal/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "type": "module",
   "engines": {

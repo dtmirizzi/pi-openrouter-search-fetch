@@ -1,6 +1,6 @@
 {
   "name": "@dtmirizzi/pi-openrouter-multimodal",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "OpenRouter multimodal tools for Pi — search, fetch, image gen, vision, video, PDF, TTS, STT",
   "keywords": [
     "pi-package"

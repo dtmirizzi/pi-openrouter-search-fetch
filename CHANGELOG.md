@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.1...v1.5.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* restore scoped package name @dtmirizzi/pi-openrouter-multimodal ([f6a22d4](https://github.com/dtmirizzi/pi-openrouter-multimodal/commit/f6a22d4d2535844698ec364c27daa9d2d09d1df8))
+
 ## [1.5.1](https://github.com/dtmirizzi/pi-openrouter-multimodal/compare/v1.5.0...v1.5.1) (2026-05-30)
 
 

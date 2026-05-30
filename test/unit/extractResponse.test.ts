@@ -1,12 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { extractResponse } from "../../src/helpers";
 
 describe("extractResponse", () => {
   it("extracts content from a message with a text content field", () => {
     const data = {
-      choices: [{
-        message: { content: "Here are the search results..." },
-      }],
+      choices: [
+        {
+          message: { content: "Here are the search results..." },
+        },
+      ],
     };
     const result = extractResponse(data);
     expect(result).toEqual({ content: "Here are the search results..." });
@@ -14,22 +16,24 @@ describe("extractResponse", () => {
 
   it("extracts tool_calls when no content field is present", () => {
     const data = {
-      choices: [{
-        message: {
-          tool_calls: [
-            {
-              function: {
-                arguments: JSON.stringify({ results: [{ title: "Result 1", url: "https://example.com" }] }),
+      choices: [
+        {
+          message: {
+            tool_calls: [
+              {
+                function: {
+                  arguments: JSON.stringify({ results: [{ title: "Result 1", url: "https://example.com" }] }),
+                },
               },
-            },
-            {
-              function: {
-                arguments: JSON.stringify({ results: [{ title: "Result 2", url: "https://example.org" }] }),
+              {
+                function: {
+                  arguments: JSON.stringify({ results: [{ title: "Result 2", url: "https://example.org" }] }),
+                },
               },
-            },
-          ],
+            ],
+          },
         },
-      }],
+      ],
     };
     const result = extractResponse(data);
     expect(result.toolCalls).toBeDefined();
@@ -60,12 +64,14 @@ describe("extractResponse", () => {
 
   it("prefers content over tool_calls when both are present", () => {
     const data = {
-      choices: [{
-        message: {
-          content: "Direct text response",
-          tool_calls: [{ function: { arguments: '{"ignored": true}' } }],
+      choices: [
+        {
+          message: {
+            content: "Direct text response",
+            tool_calls: [{ function: { arguments: '{"ignored": true}' } }],
+          },
         },
-      }],
+      ],
     };
     const result = extractResponse(data);
     expect(result).toEqual({ content: "Direct text response" });

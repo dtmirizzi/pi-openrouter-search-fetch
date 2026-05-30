@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { setToolActive } from "../../src/helpers";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { describe, expect, it, vi } from "vitest";
+import { setToolActive } from "../../src/helpers";
 
 function makeMockAPI(initialTools: string[]): ExtensionAPI {
   let active = [...initialTools];

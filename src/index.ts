@@ -16,54 +16,53 @@
  * Settings at /web-tools and /web-models.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import {
-  truncateHead,
-  DEFAULT_MAX_BYTES,
-  DEFAULT_MAX_LINES,
-  getSettingsListTheme,
-} from "@earendil-works/pi-coding-agent";
-import { Container, type SettingItem, SettingsList } from "@earendil-works/pi-tui";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
-  resolveApiKey,
-  isActiveModelOpenRouter,
-  persistState,
-  restoreState,
-  setToolActive,
-  statusLabel,
-  callOpenRouterTool,
-  extractResponse,
-  generateImage,
-  speakText,
-  transcribeAudio,
+  DEFAULT_MAX_BYTES,
+  DEFAULT_MAX_LINES,
+  getSettingsListTheme,
+  truncateHead,
+} from "@earendil-works/pi-coding-agent";
+import { Container, type SettingItem, SettingsList } from "@earendil-works/pi-tui";
+import { Type } from "typebox";
+import type { ExtensionState, ModelOption } from "./helpers";
+import {
   callChatMultimodal,
-  fetchOpenRouterModels,
+  callOpenRouterTool,
+  DEFAULT_STATE,
+  extractResponse,
   FALLBACK_IMAGE_MODELS,
-  FALLBACK_VISION_MODELS,
-  FALLBACK_VIDEO_MODELS,
   FALLBACK_PDF_MODELS,
+  FALLBACK_STT_MODELS,
   FALLBACK_TTS_MODELS,
   FALLBACK_TTS_VOICES,
-  FALLBACK_STT_MODELS,
+  FALLBACK_VIDEO_MODELS,
+  FALLBACK_VISION_MODELS,
+  fetchOpenRouterModels,
+  generateImage,
+  isActiveModelOpenRouter,
+  persistState,
+  resolveApiKey,
+  restoreState,
+  setToolActive,
+  speakText,
+  statusLabel,
+  transcribeAudio,
 } from "./helpers";
-import type { ExtensionState, ModelOption } from "./helpers";
-import { DEFAULT_STATE } from "./helpers";
 
 const SEARCH_SRV = "openrouter:web_search";
-const FETCH_SRV  = "openrouter:web_fetch";
+const FETCH_SRV = "openrouter:web_fetch";
 const SEARCH_TOOL = "web_search";
-const FETCH_TOOL  = "web_fetch";
-const IMAGE_TOOL  = "image_generate";
+const FETCH_TOOL = "web_fetch";
+const IMAGE_TOOL = "image_generate";
 const VISION_TOOL = "image_understand";
-const VIDEO_TOOL  = "video_understand";
-const PDF_TOOL    = "pdf_read";
-const TTS_TOOL    = "tts_speak";
-const STT_TOOL    = "stt_transcribe";
+const VIDEO_TOOL = "video_understand";
+const PDF_TOOL = "pdf_read";
+const TTS_TOOL = "tts_speak";
+const STT_TOOL = "stt_transcribe";
 
 // ── Model options cache ────────────────────────────────────────────────────
 
@@ -72,24 +71,21 @@ let visionModels: ModelOption[] = [...FALLBACK_VISION_MODELS];
 let videoModels: ModelOption[] = [...FALLBACK_VIDEO_MODELS];
 let pdfModels: ModelOption[] = [...FALLBACK_PDF_MODELS];
 let ttsModels: ModelOption[] = [...FALLBACK_TTS_MODELS];
-let ttsVoices: ModelOption[] = [...FALLBACK_TTS_VOICES];
+const ttsVoices: ModelOption[] = [...FALLBACK_TTS_VOICES];
 let sttModels: ModelOption[] = [...FALLBACK_STT_MODELS];
 
 /** Settings helpers */
-function modelToSettingValue(m: ModelOption): string {
+function _modelToSettingValue(m: ModelOption): string {
   return m.id;
 }
 
-function settingValueToModel(
-  value: string,
-  options: ModelOption[],
-): string {
+function _settingValueToModel(value: string, options: ModelOption[]): string {
   // value is the model id
   const found = options.find((m) => m.id === value);
-  return found ? found.id : options[0]?.id ?? value;
+  return found ? found.id : (options[0]?.id ?? value);
 }
 
-function modelSettingItems(
+function _modelSettingItems(
   options: ModelOption[],
   currentId: string,
 ): { id: string; label: string; currentValue: string; values: string[] } {
@@ -108,7 +104,7 @@ function modelToSettingItem(m: ModelOption): string {
 
 function labelToModelId(label: string, options: ModelOption[]): string {
   const found = options.find((m) => m.label === label);
-  return found ? found.id : options[0]?.id ?? label;
+  return found ? found.id : (options[0]?.id ?? label);
 }
 
 // ── Settings UI builder ─────────────────────────────────────────────────────
@@ -125,10 +121,7 @@ function openSettings(
       container.addChild(
         new (class {
           render() {
-            return [
-              theme.fg("accent", theme.bold(title)),
-              theme.fg("dim", "─".repeat(40)),
-            ];
+            return [theme.fg("accent", theme.bold(title)), theme.fg("dim", "─".repeat(40))];
           }
           invalidate() {}
         })(),
@@ -149,10 +142,7 @@ function openSettings(
 
       const hint = new (class {
         render() {
-          return [
-            "",
-            theme.fg("dim", "↑↓ navigate  ·  ←→ cycle value  ·  Esc close"),
-          ];
+          return ["", theme.fg("dim", "↑↓ navigate  ·  ←→ cycle value  ·  Esc close")];
         }
         invalidate() {}
       })();
@@ -235,17 +225,57 @@ export default function (pi: ExtensionAPI) {
     description: "Configure all OpenRouter tools — toggle tools and set engines",
     handler: async (_args, ctx) => {
       const items: SettingItem[] = [
-        { id: "s-enabled", label: "Web Search",      currentValue: state.searchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "s-engine",  label: "Search Engine",   currentValue: state.searchEngine, values: ["auto", "native", "exa", "firecrawl", "parallel"] },
-        { id: "f-enabled", label: "Web Fetch",        currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "f-engine",  label: "Fetch Engine",    currentValue: state.fetchEngine, values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
-        { id: "i-enabled", label: "Image Generate",  currentValue: state.imageEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "v-enabled", label: "Image Understand", currentValue: state.visionEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "d-enabled", label: "Video Understand", currentValue: state.videoEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "p-enabled", label: "PDF Read",         currentValue: state.pdfEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "t-enabled", label: "TTS (Speak)",      currentValue: state.ttsEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "r-enabled", label: "STT (Transcribe)", currentValue: state.sttEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "compact",   label: "Status Bar",       currentValue: state.compactStatus ? "compact" : "verbose", values: ["verbose", "compact"] },
+        {
+          id: "s-enabled",
+          label: "Web Search",
+          currentValue: state.searchEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        {
+          id: "s-engine",
+          label: "Search Engine",
+          currentValue: state.searchEngine,
+          values: ["auto", "native", "exa", "firecrawl", "parallel"],
+        },
+        { id: "f-enabled", label: "Web Fetch", currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
+        {
+          id: "f-engine",
+          label: "Fetch Engine",
+          currentValue: state.fetchEngine,
+          values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"],
+        },
+        {
+          id: "i-enabled",
+          label: "Image Generate",
+          currentValue: state.imageEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        {
+          id: "v-enabled",
+          label: "Image Understand",
+          currentValue: state.visionEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        {
+          id: "d-enabled",
+          label: "Video Understand",
+          currentValue: state.videoEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        { id: "p-enabled", label: "PDF Read", currentValue: state.pdfEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "t-enabled", label: "TTS (Speak)", currentValue: state.ttsEnabled ? "on" : "off", values: ["on", "off"] },
+        {
+          id: "r-enabled",
+          label: "STT (Transcribe)",
+          currentValue: state.sttEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        {
+          id: "compact",
+          label: "Status Bar",
+          currentValue: state.compactStatus ? "compact" : "verbose",
+          values: ["verbose", "compact"],
+        },
       ];
 
       await openSettings(ctx, "OpenRouter Web Tools", items, (id, val) => {
@@ -280,22 +310,25 @@ export default function (pi: ExtensionAPI) {
       const sttValues = sttModels.map(modelToSettingItem);
 
       // Current labels for display
-      const imgCurrent = imageModels.find((m) => m.id === state.imageModel)?.label ?? imageModels[0]?.label ?? state.imageModel;
-      const visCurrent = visionModels.find((m) => m.id === state.visionModel)?.label ?? visionModels[0]?.label ?? state.visionModel;
-      const vidCurrent = videoModels.find((m) => m.id === state.videoModel)?.label ?? videoModels[0]?.label ?? state.videoModel;
+      const imgCurrent =
+        imageModels.find((m) => m.id === state.imageModel)?.label ?? imageModels[0]?.label ?? state.imageModel;
+      const visCurrent =
+        visionModels.find((m) => m.id === state.visionModel)?.label ?? visionModels[0]?.label ?? state.visionModel;
+      const vidCurrent =
+        videoModels.find((m) => m.id === state.videoModel)?.label ?? videoModels[0]?.label ?? state.videoModel;
       const pdfCurrent = pdfModels.find((m) => m.id === state.pdfModel)?.label ?? pdfModels[0]?.label ?? state.pdfModel;
       const ttsCurrent = ttsModels.find((m) => m.id === state.ttsModel)?.label ?? ttsModels[0]?.label ?? state.ttsModel;
       const voxCurrent = state.ttsVoice;
       const sttCurrent = sttModels.find((m) => m.id === state.sttModel)?.label ?? sttModels[0]?.label ?? state.sttModel;
 
       const items: SettingItem[] = [
-        { id: "i-model", label: "Image Model",  currentValue: imgCurrent, values: imgValues },
-        { id: "v-model", label: "Vision Model",  currentValue: visCurrent, values: visValues },
-        { id: "d-model", label: "Video Model",  currentValue: vidCurrent, values: vidValues },
-        { id: "p-model", label: "PDF Model",    currentValue: pdfCurrent, values: pdfValues },
-        { id: "t-model", label: "TTS Model",    currentValue: ttsCurrent, values: ttsValues },
-        { id: "t-voice", label: "TTS Voice",    currentValue: voxCurrent, values: voxValues },
-        { id: "r-model", label: "STT Model",    currentValue: sttCurrent, values: sttValues },
+        { id: "i-model", label: "Image Model", currentValue: imgCurrent, values: imgValues },
+        { id: "v-model", label: "Vision Model", currentValue: visCurrent, values: visValues },
+        { id: "d-model", label: "Video Model", currentValue: vidCurrent, values: vidValues },
+        { id: "p-model", label: "PDF Model", currentValue: pdfCurrent, values: pdfValues },
+        { id: "t-model", label: "TTS Model", currentValue: ttsCurrent, values: ttsValues },
+        { id: "t-voice", label: "TTS Voice", currentValue: voxCurrent, values: voxValues },
+        { id: "r-model", label: "STT Model", currentValue: sttCurrent, values: sttValues },
       ];
 
       await openSettings(ctx, "OpenRouter Model Selection", items, (id, val) => {
@@ -318,8 +351,18 @@ export default function (pi: ExtensionAPI) {
     description: "Toggle web_search tool and configure default search engine",
     handler: async (_args, ctx) => {
       const items: SettingItem[] = [
-        { id: "s-enabled", label: "Web Search", currentValue: state.searchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "s-engine",  label: "Search Engine",  currentValue: state.searchEngine, values: ["auto", "native", "exa", "firecrawl", "parallel"] },
+        {
+          id: "s-enabled",
+          label: "Web Search",
+          currentValue: state.searchEnabled ? "on" : "off",
+          values: ["on", "off"],
+        },
+        {
+          id: "s-engine",
+          label: "Search Engine",
+          currentValue: state.searchEngine,
+          values: ["auto", "native", "exa", "firecrawl", "parallel"],
+        },
       ];
       await openSettings(ctx, "OpenRouter Web Search", items, (id, val) => {
         if (id === "s-enabled") state.searchEnabled = val === "on";
@@ -337,7 +380,12 @@ export default function (pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       const items: SettingItem[] = [
         { id: "f-enabled", label: "Web Fetch", currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
-        { id: "f-engine",  label: "Fetch Engine",  currentValue: state.fetchEngine,  values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
+        {
+          id: "f-engine",
+          label: "Fetch Engine",
+          currentValue: state.fetchEngine,
+          values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"],
+        },
       ];
       await openSettings(ctx, "OpenRouter Web Fetch", items, (id, val) => {
         if (id === "f-enabled") state.fetchEnabled = val === "on";
@@ -363,16 +411,27 @@ export default function (pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       query: Type.String({ description: "Search query string" }),
-      engine: Type.Optional(Type.String({ description: "Search engine: auto (default), native, exa, firecrawl, parallel" })),
-      max_results: Type.Optional(Type.Integer({ minimum: 1, maximum: 25, description: "Max results per call (1-25, default 5)" })),
-      search_context_size: Type.Optional(Type.String({ description: "Context per result: low (5K), medium (15K), high (30K)" })),
-      allowed_domains: Type.Optional(Type.Array(Type.String(), { description: "Only return results from these domains" })),
+      engine: Type.Optional(
+        Type.String({ description: "Search engine: auto (default), native, exa, firecrawl, parallel" }),
+      ),
+      max_results: Type.Optional(
+        Type.Integer({ minimum: 1, maximum: 25, description: "Max results per call (1-25, default 5)" }),
+      ),
+      search_context_size: Type.Optional(
+        Type.String({ description: "Context per result: low (5K), medium (15K), high (30K)" }),
+      ),
+      allowed_domains: Type.Optional(
+        Type.Array(Type.String(), { description: "Only return results from these domains" }),
+      ),
       excluded_domains: Type.Optional(Type.Array(Type.String(), { description: "Exclude results from these domains" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "web_search is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "web_search is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -383,15 +442,19 @@ export default function (pi: ExtensionAPI) {
       onUpdate?.({ content: [{ type: "text", text: `Searching: "${params.query}"...` }] });
 
       const toolParams: Record<string, unknown> = {};
-      if (engine && engine !== "auto") toolParams["engine"] = engine;
-      if (params.max_results) toolParams["max_results"] = params.max_results;
-      if (params.search_context_size) toolParams["search_context_size"] = params.search_context_size;
-      if (params.allowed_domains) toolParams["allowed_domains"] = params.allowed_domains;
-      if (params.excluded_domains) toolParams["excluded_domains"] = params.excluded_domains;
+      if (engine && engine !== "auto") toolParams.engine = engine;
+      if (params.max_results) toolParams.max_results = params.max_results;
+      if (params.search_context_size) toolParams.search_context_size = params.search_context_size;
+      if (params.allowed_domains) toolParams.allowed_domains = params.allowed_domains;
+      if (params.excluded_domains) toolParams.excluded_domains = params.excluded_domains;
 
-      const res = await callOpenRouterTool(apiKey, SEARCH_SRV, toolParams, [
-        { role: "user", content: params.query },
-      ], signal);
+      const res = await callOpenRouterTool(
+        apiKey,
+        SEARCH_SRV,
+        toolParams,
+        [{ role: "user", content: params.query }],
+        signal,
+      );
 
       if (!res.ok) throw new Error(`OpenRouter search error (${res.status}): ${res.error}`);
 
@@ -401,7 +464,10 @@ export default function (pi: ExtensionAPI) {
       }
       if (extracted.toolCalls) {
         const tr = truncateHead(extracted.toolCalls, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
-        return { content: [{ type: "text", text: tr.content }], details: { source: "tool_calls", engine, truncated: tr.truncated } };
+        return {
+          content: [{ type: "text", text: tr.content }],
+          details: { source: "tool_calls", engine, truncated: tr.truncated },
+        };
       }
       return { content: [{ type: "text", text: "No results." }], details: { status: "empty" } };
     },
@@ -422,13 +488,20 @@ export default function (pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       url: Type.String({ description: "URL to fetch content from" }),
-      engine: Type.Optional(Type.String({ description: "Fetch engine: auto (default), native, exa, openrouter, firecrawl, parallel" })),
-      max_content_tokens: Type.Optional(Type.Integer({ description: "Max content length in approximate tokens (e.g. 50000)" })),
+      engine: Type.Optional(
+        Type.String({ description: "Fetch engine: auto (default), native, exa, openrouter, firecrawl, parallel" }),
+      ),
+      max_content_tokens: Type.Optional(
+        Type.Integer({ description: "Max content length in approximate tokens (e.g. 50000)" }),
+      ),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "web_fetch is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "web_fetch is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -439,25 +512,38 @@ export default function (pi: ExtensionAPI) {
       onUpdate?.({ content: [{ type: "text", text: `Fetching: ${params.url}...` }] });
 
       const toolParams: Record<string, unknown> = {};
-      if (engine && engine !== "auto") toolParams["engine"] = engine;
-      if (params.max_content_tokens) toolParams["max_content_tokens"] = params.max_content_tokens;
+      if (engine && engine !== "auto") toolParams.engine = engine;
+      if (params.max_content_tokens) toolParams.max_content_tokens = params.max_content_tokens;
 
-      const res = await callOpenRouterTool(apiKey, FETCH_SRV, toolParams, [
-        { role: "user", content: `Fetch and show me the content at ${params.url}` },
-      ], signal);
+      const res = await callOpenRouterTool(
+        apiKey,
+        FETCH_SRV,
+        toolParams,
+        [{ role: "user", content: `Fetch and show me the content at ${params.url}` }],
+        signal,
+      );
 
       if (!res.ok) throw new Error(`OpenRouter fetch error (${res.status}): ${res.error}`);
 
       const extracted = extractResponse(res.data!);
       if (extracted.content) {
         const tr = truncateHead(extracted.content, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
-        return { content: [{ type: "text", text: tr.content }], details: { source: "openrouter", engine, url: params.url, truncated: tr.truncated } };
+        return {
+          content: [{ type: "text", text: tr.content }],
+          details: { source: "openrouter", engine, url: params.url, truncated: tr.truncated },
+        };
       }
       if (extracted.toolCalls) {
         const tr = truncateHead(extracted.toolCalls, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
-        return { content: [{ type: "text", text: tr.content }], details: { source: "tool_calls", engine, url: params.url, truncated: tr.truncated } };
+        return {
+          content: [{ type: "text", text: tr.content }],
+          details: { source: "tool_calls", engine, url: params.url, truncated: tr.truncated },
+        };
       }
-      return { content: [{ type: "text", text: "Fetch returned no content." }], details: { status: "empty", url: params.url } };
+      return {
+        content: [{ type: "text", text: "Fetch returned no content." }],
+        details: { status: "empty", url: params.url },
+      };
     },
   });
 
@@ -482,7 +568,10 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "image_generate is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "image_generate is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -511,7 +600,10 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
-      return { content: [{ type: "text", text: "Image generation returned no images." }], details: { status: "empty" } };
+      return {
+        content: [{ type: "text", text: "Image generation returned no images." }],
+        details: { status: "empty" },
+      };
     },
   });
 
@@ -524,9 +616,7 @@ export default function (pi: ExtensionAPI) {
       "Convert text to speech via OpenRouter's /audio/speech endpoint. " +
       "Returns an MP3 audio file saved to a temp location. " +
       "Use /web-models to select TTS model and voice.",
-    promptGuidelines: [
-      "Use tts_speak when the user asks to speak text aloud or convert text to audio.",
-    ],
+    promptGuidelines: ["Use tts_speak when the user asks to speak text aloud or convert text to audio."],
     parameters: Type.Object({
       text: Type.String({ description: "Text to convert to speech" }),
       model: Type.Optional(Type.String({ description: "TTS model (overrides default from /web-models)" })),
@@ -535,7 +625,10 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "tts_speak is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "tts_speak is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -557,7 +650,12 @@ export default function (pi: ExtensionAPI) {
       writeFileSync(tmpPath, Buffer.from(result.buffer!));
 
       return {
-        content: [{ type: "text", text: `TTS audio saved to: ${tmpPath}\nText: "${params.text}"\nModel: ${model}, Voice: ${voice}` }],
+        content: [
+          {
+            type: "text",
+            text: `TTS audio saved to: ${tmpPath}\nText: "${params.text}"\nModel: ${model}, Voice: ${voice}`,
+          },
+        ],
         details: { model, voice, savedTo: tmpPath, size: result.buffer!.byteLength },
       };
     },
@@ -586,7 +684,10 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "stt_transcribe is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "stt_transcribe is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -632,7 +733,10 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "image_understand is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "image_understand is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -672,13 +776,18 @@ export default function (pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       url: Type.String({ description: "Video URL (YouTube link for Gemini, or direct video URL)" }),
-      prompt: Type.Optional(Type.String({ description: "What to analyze (default: 'Describe what happens in this video')" })),
+      prompt: Type.Optional(
+        Type.String({ description: "What to analyze (default: 'Describe what happens in this video')" }),
+      ),
       model: Type.Optional(Type.String({ description: "Video model (overrides default from /web-models)" })),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "video_understand is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "video_understand is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {
@@ -719,14 +828,23 @@ export default function (pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       url: Type.String({ description: "URL of the PDF document" }),
-      prompt: Type.Optional(Type.String({ description: "What to extract/analyze (default: 'Summarize this document')" })),
+      prompt: Type.Optional(
+        Type.String({ description: "What to extract/analyze (default: 'Summarize this document')" }),
+      ),
       model: Type.Optional(Type.String({ description: "Model (overrides default from /web-models)" })),
-      engine: Type.Optional(Type.String({ description: "PDF engine: cloudflare-ai (default, free), mistral-ocr (scanned docs), or native" })),
+      engine: Type.Optional(
+        Type.String({
+          description: "PDF engine: cloudflare-ai (default, free), mistral-ocr (scanned docs), or native",
+        }),
+      ),
     }),
 
     async execute(_id, params, signal, onUpdate, ctx) {
       if (!isActiveModelOpenRouter(ctx)) {
-        return { content: [{ type: "text", text: "pdf_read is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+        return {
+          content: [{ type: "text", text: "pdf_read is only available with OpenRouter models." }],
+          details: { error: "wrong_provider" },
+        };
       }
       const apiKey = resolveApiKey(ctx);
       if (!apiKey) {

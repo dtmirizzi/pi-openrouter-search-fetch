@@ -3,10 +3,10 @@
  * unit-tested without registering the full Pi extension.
  */
 
-import type { ExtensionContext, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 // ── State types ──────────────────────────────────────────────────────────────
 
@@ -194,9 +194,9 @@ export async function fetchOpenRouterModels(apiKey: string): Promise<{
     }
 
     // Deduplicate pdf (same as vision filter)
-    const pdfIds = new Set(pdf.map(m => m.id));
-    const uniquePdf = pdf.filter(m => {
-      if (vision.find(v => v.id === m.id)) return true;
+    const pdfIds = new Set(pdf.map((m) => m.id));
+    const uniquePdf = pdf.filter((m) => {
+      if (vision.find((v) => v.id === m.id)) return true;
       return pdfIds.has(m.id);
     });
 
@@ -211,7 +211,7 @@ export async function fetchOpenRouterModels(apiKey: string): Promise<{
 export function resolveApiKey(ctx: {
   modelRegistry: { find: (provider: string, id?: string) => { apiKey?: string } | undefined };
 }): string | undefined {
-  const envKey = process.env["OPENROUTER_API_KEY"];
+  const envKey = process.env.OPENROUTER_API_KEY;
   if (envKey) return envKey;
 
   try {
@@ -227,9 +227,9 @@ export function resolveApiKey(ctx: {
     const modelsPath = join(homedir(), ".pi", "agent", "models.json");
     if (existsSync(modelsPath)) {
       const config = JSON.parse(readFileSync(modelsPath, "utf8")) as Record<string, unknown>;
-      const providers = config["providers"] as Record<string, unknown> | undefined;
-      const openrouter = providers?.["openrouter"] as Record<string, unknown> | undefined;
-      const key = openrouter?.["apiKey"];
+      const providers = config.providers as Record<string, unknown> | undefined;
+      const openrouter = providers?.openrouter as Record<string, unknown> | undefined;
+      const key = openrouter?.apiKey;
       if (typeof key === "string" && key.length > 0) return key;
     }
   } catch {
@@ -290,7 +290,7 @@ export function statusLabel(state: ExtensionState): string {
     if (state.pdfEnabled) parts.push(`PDF:${modelSlug(state.pdfModel)}`);
     if (state.ttsEnabled) parts.push(`TTS:${modelSlug(state.ttsModel)}`);
     if (state.sttEnabled) parts.push(`STT:${modelSlug(state.sttModel)}`);
-    return parts.join("  ");
+    return parts.join(" | ");
   }
   const parts: string[] = [];
   parts.push(state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off");
@@ -301,7 +301,7 @@ export function statusLabel(state: ExtensionState): string {
   if (state.pdfEnabled) parts.push(`pdf:on(${modelSlug(state.pdfModel)})`);
   if (state.ttsEnabled) parts.push(`tts:on(${modelSlug(state.ttsModel)})`);
   if (state.sttEnabled) parts.push(`stt:on(${modelSlug(state.sttModel)})`);
-  return parts.join(" ");
+  return parts.join(" | ");
 }
 
 // ── API layer ────────────────────────────────────────────────────────────────
@@ -314,7 +314,7 @@ export async function callOpenRouterTool(
   signal?: AbortSignal,
 ): Promise<{ ok: boolean; status: number; data?: Record<string, unknown>; error?: string }> {
   const toolDef: Record<string, unknown> = { type: serverTool };
-  if (Object.keys(toolParams).length > 0) toolDef["parameters"] = toolParams;
+  if (Object.keys(toolParams).length > 0) toolDef.parameters = toolParams;
 
   try {
     const res = await fetch(`${OPENROUTER_API}/chat/completions`, {
@@ -346,21 +346,19 @@ export async function callOpenRouterTool(
 }
 
 /** Extract content/text from an OpenRouter tool response. */
-export function extractResponse(
-  data: Record<string, unknown>,
-): { content?: string; toolCalls?: string } {
-  const choice = (data["choices"] as Array<Record<string, unknown>>)?.[0];
-  const msg = choice?.["message"] as Record<string, unknown> | undefined;
+export function extractResponse(data: Record<string, unknown>): { content?: string; toolCalls?: string } {
+  const choice = (data.choices as Array<Record<string, unknown>>)?.[0];
+  const msg = choice?.message as Record<string, unknown> | undefined;
 
-  const content = msg?.["content"] as string | null | undefined;
+  const content = msg?.content as string | null | undefined;
   if (content) return { content };
 
-  const calls = msg?.["tool_calls"] as Array<Record<string, unknown>> | undefined;
+  const calls = msg?.tool_calls as Array<Record<string, unknown>> | undefined;
   if (calls?.length) {
     const parts: string[] = [];
     for (const c of calls) {
-      const fn = c["function"] as Record<string, unknown> | undefined;
-      if (fn?.["arguments"]) parts.push(fn["arguments"] as string);
+      const fn = c.function as Record<string, unknown> | undefined;
+      if (fn?.arguments) parts.push(fn.arguments as string);
     }
     if (parts.length) return { toolCalls: parts.join("\n\n---\n\n") };
   }
@@ -398,29 +396,29 @@ export async function generateImage(
     }
 
     const data = (await res.json()) as Record<string, unknown>;
-    const choice = (data["choices"] as Array<Record<string, unknown>>)?.[0];
-    const msg = choice?.["message"] as Record<string, unknown> | undefined;
+    const choice = (data.choices as Array<Record<string, unknown>>)?.[0];
+    const msg = choice?.message as Record<string, unknown> | undefined;
 
     // Try multiple response formats
     // Format 1: images array with image_url.url
-    const imagesRaw = msg?.["images"] as Array<Record<string, unknown>> | undefined;
+    const imagesRaw = msg?.images as Array<Record<string, unknown>> | undefined;
     if (imagesRaw?.length) {
       const urls: string[] = [];
       for (const img of imagesRaw) {
-        const imageUrl = img["image_url"] as Record<string, unknown> | undefined;
-        const url = imageUrl?.["url"] as string | undefined;
+        const imageUrl = img.image_url as Record<string, unknown> | undefined;
+        const url = imageUrl?.url as string | undefined;
         if (url) urls.push(url);
       }
       if (urls.length) return { ok: true, images: urls };
     }
 
     // Format 2: content is an array with image_url blocks
-    const content = msg?.["content"];
+    const content = msg?.content;
     if (Array.isArray(content)) {
       const urls: string[] = [];
       for (const block of content) {
-        if (block && typeof block === "object" && block["type"] === "image_url") {
-          const url = block["image_url"]?.["url"] as string | undefined;
+        if (block && typeof block === "object" && block.type === "image_url") {
+          const url = block.image_url?.url as string | undefined;
           if (url) urls.push(url);
         }
       }
@@ -428,8 +426,8 @@ export async function generateImage(
     }
 
     // Format 3: single image_url in content
-    if (content && typeof content === "object" && content["type"] === "image_url") {
-      const url = content["image_url"]?.["url"] as string | undefined;
+    if (content && typeof content === "object" && content.type === "image_url") {
+      const url = content.image_url?.url as string | undefined;
       if (url) return { ok: true, images: [url] };
     }
 
@@ -499,7 +497,7 @@ export async function transcribeAudio(
     }
 
     const data = (await res.json()) as Record<string, unknown>;
-    const txt = data["text"] as string | undefined;
+    const txt = data.text as string | undefined;
     return { ok: true, text: txt || "" };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -527,7 +525,7 @@ export async function callChatMultimodal(
     messages: [{ role: "user", content: [{ type: "text", text: prompt }, contentBlock] }],
     max_tokens: 4096,
   };
-  if (plugins) body["plugins"] = plugins;
+  if (plugins) body.plugins = plugins;
 
   try {
     const res = await fetch(`${OPENROUTER_API}/chat/completions`, {
@@ -541,9 +539,9 @@ export async function callChatMultimodal(
       return { ok: false, error: `HTTP ${res.status}: ${errText}` };
     }
     const data = (await res.json()) as Record<string, unknown>;
-    const choices = data["choices"] as Array<Record<string, unknown>> | undefined;
-    const msg = choices?.[0]?.["message"] as Record<string, unknown> | undefined;
-    const txt = msg?.["content"] as string | null | undefined;
+    const choices = data.choices as Array<Record<string, unknown>> | undefined;
+    const msg = choices?.[0]?.message as Record<string, unknown> | undefined;
+    const txt = msg?.content as string | null | undefined;
     return { ok: true, text: txt || "(no response)" };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

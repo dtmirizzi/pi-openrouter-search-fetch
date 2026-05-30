@@ -29,6 +29,12 @@
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
+    "fmt": "biome format --write .",
+    "fmt:check": "biome format .",
+    "lint": "biome check --write .",
+    "lint:check": "biome check .",
+    "check": "biome check --write .",
+    "check:ci": "biome ci .",
     "semantic-release": "semantic-release"
   },
   "pi": {
@@ -43,6 +49,7 @@
     "typebox": "*"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.1",

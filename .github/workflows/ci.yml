@@ -7,6 +7,17 @@ on:
     branches-ignore: [main] # main is handled by release.yml
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run fmt:check
+      - run: npm run lint:check
+
   unit:
     runs-on: ubuntu-latest
     steps:

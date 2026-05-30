@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { callOpenRouterTool, extractResponse } from "../../src/helpers";
 
-const API_KEY = process.env["OPENROUTER_API_KEY"];
+const API_KEY = process.env.OPENROUTER_API_KEY;
 const describeIntegration = API_KEY ? describe : describe.skip;
 
 describeIntegration("web_search integration (live OpenRouter)", () => {

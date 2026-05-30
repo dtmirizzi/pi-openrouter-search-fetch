@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { restoreState, DEFAULT_STATE, STATE_ENTRY } from "../../src/helpers";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { describe, expect, it, vi } from "vitest";
 import type { ExtensionState } from "../../src/helpers";
+import { DEFAULT_STATE, restoreState, STATE_ENTRY } from "../../src/helpers";
 
 function makeCtx(branchEntries: Array<{ type: string; customType?: string; data?: unknown }>): ExtensionContext {
   return {
@@ -50,7 +50,11 @@ describe("restoreState", () => {
       compactStatus: false,
     };
     const ctx = makeCtx([
-      { type: "custom", customType: STATE_ENTRY, data: { searchEnabled: true, searchEngine: "auto", fetchEnabled: false, fetchEngine: "native" } },
+      {
+        type: "custom",
+        customType: STATE_ENTRY,
+        data: { searchEnabled: true, searchEngine: "auto", fetchEnabled: false, fetchEngine: "native" },
+      },
       { type: "message" },
       { type: "custom", customType: STATE_ENTRY, data: previous },
     ]);
@@ -59,25 +63,19 @@ describe("restoreState", () => {
   });
 
   it("returns DEFAULT_STATE when entry data is not an object", () => {
-    const ctx = makeCtx([
-      { type: "custom", customType: STATE_ENTRY, data: null },
-    ]);
+    const ctx = makeCtx([{ type: "custom", customType: STATE_ENTRY, data: null }]);
     const state = restoreState(ctx);
     expect(state).toEqual(DEFAULT_STATE);
   });
 
   it("returns DEFAULT_STATE when entry data is undefined", () => {
-    const ctx = makeCtx([
-      { type: "custom", customType: STATE_ENTRY },
-    ]);
+    const ctx = makeCtx([{ type: "custom", customType: STATE_ENTRY }]);
     const state = restoreState(ctx);
     expect(state).toEqual(DEFAULT_STATE);
   });
 
   it("merges partial data with DEFAULT_STATE", () => {
-    const ctx = makeCtx([
-      { type: "custom", customType: STATE_ENTRY, data: { searchEnabled: false } },
-    ]);
+    const ctx = makeCtx([{ type: "custom", customType: STATE_ENTRY, data: { searchEnabled: false } }]);
     const state = restoreState(ctx);
     expect(state.searchEnabled).toBe(false);
     // other fields fall back to defaults

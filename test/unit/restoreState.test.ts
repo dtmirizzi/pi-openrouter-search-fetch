@@ -29,7 +29,7 @@ describe("restoreState", () => {
   });
 
   it("returns persisted state from the last matching entry", () => {
-    const previous: ExtensionState = { searchEnabled: false, searchEngine: "exa", fetchEnabled: true, fetchEngine: "auto", imageEnabled: false, ttsEnabled: false, sttEnabled: false, compactStatus: false };
+    const previous: ExtensionState = { searchEnabled: false, searchEngine: "exa", fetchEnabled: true, fetchEngine: "auto", imageEnabled: false, visionEnabled: false, videoEnabled: false, pdfEnabled: false, ttsEnabled: false, sttEnabled: false, compactStatus: false };
     const ctx = makeCtx([
       { type: "custom", customType: STATE_ENTRY, data: { searchEnabled: true, searchEngine: "auto", fetchEnabled: false, fetchEngine: "native" } },
       { type: "message" },

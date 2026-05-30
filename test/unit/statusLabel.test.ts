@@ -8,13 +8,16 @@ const base: ExtensionState = {
   fetchEnabled: true,
   fetchEngine: "auto",
   imageEnabled: false,
+  visionEnabled: false,
+  videoEnabled: false,
+  pdfEnabled: false,
   ttsEnabled: false,
   sttEnabled: false,
   compactStatus: false,
 };
 
 describe("statusLabel (verbose mode — default)", () => {
-  it("shows both on with engines", () => {
+  it("search + fetch only", () => {
     expect(statusLabel(base)).toBe("search:on(auto) fetch:on(auto)");
   });
   it("search off", () => {
@@ -29,30 +32,23 @@ describe("statusLabel (verbose mode — default)", () => {
   it("custom engines", () => {
     expect(statusLabel({ ...base, searchEngine: "exa", fetchEngine: "firecrawl" })).toBe("search:on(exa) fetch:on(firecrawl)");
   });
-  it("shows image on when enabled", () => {
-    expect(statusLabel({ ...base, imageEnabled: true })).toBe("search:on(auto) fetch:on(auto) image:on");
+  it("all toggles on", () => {
+    expect(statusLabel({ ...base, imageEnabled: true, visionEnabled: true, videoEnabled: true, pdfEnabled: true, ttsEnabled: true, sttEnabled: true }))
+      .toBe("search:on(auto) fetch:on(auto) img:on vision:on video:on pdf:on tts:on stt:on");
   });
-  it("shows tts on when enabled", () => {
-    expect(statusLabel({ ...base, ttsEnabled: true })).toBe("search:on(auto) fetch:on(auto) tts:on");
-  });
-  it("shows stt on when enabled", () => {
-    expect(statusLabel({ ...base, sttEnabled: true })).toBe("search:on(auto) fetch:on(auto) stt:on");
-  });
-  it("shows all extras when all enabled", () => {
-    expect(statusLabel({ ...base, imageEnabled: true, ttsEnabled: true, sttEnabled: true })).toBe("search:on(auto) fetch:on(auto) image:on tts:on stt:on");
+  it("only new tools on", () => {
+    expect(statusLabel({ ...base, searchEnabled: false, fetchEnabled: false, visionEnabled: true, pdfEnabled: true }))
+      .toBe("search:off fetch:off vision:on pdf:on");
   });
 });
 
 describe("statusLabel (compact mode)", () => {
   const c = { ...base, compactStatus: true };
-  it("both on with engines", () => {
+  it("search + fetch only", () => {
     expect(statusLabel(c)).toBe("S auto  F auto");
   });
   it("search off", () => {
     expect(statusLabel({ ...c, searchEnabled: false })).toBe("S off  F auto");
-  });
-  it("fetch off", () => {
-    expect(statusLabel({ ...c, fetchEnabled: false })).toBe("S auto  F off");
   });
   it("both off", () => {
     expect(statusLabel({ ...c, searchEnabled: false, fetchEnabled: false })).toBe("S off  F off");
@@ -60,16 +56,8 @@ describe("statusLabel (compact mode)", () => {
   it("custom engines", () => {
     expect(statusLabel({ ...c, searchEngine: "exa", fetchEngine: "firecrawl" })).toBe("S exa  F firecrawl");
   });
-  it("shows image when enabled", () => {
-    expect(statusLabel({ ...c, imageEnabled: true })).toBe("S auto  F auto  Img");
-  });
-  it("shows tts when enabled", () => {
-    expect(statusLabel({ ...c, ttsEnabled: true })).toBe("S auto  F auto  TTS");
-  });
-  it("shows stt when enabled", () => {
-    expect(statusLabel({ ...c, sttEnabled: true })).toBe("S auto  F auto  STT");
-  });
-  it("shows all extras when all enabled", () => {
-    expect(statusLabel({ ...c, imageEnabled: true, ttsEnabled: true, sttEnabled: true })).toBe("S auto  F auto  Img  TTS  STT");
+  it("all toggles on", () => {
+    expect(statusLabel({ ...c, imageEnabled: true, visionEnabled: true, videoEnabled: true, pdfEnabled: true, ttsEnabled: true, sttEnabled: true }))
+      .toBe("S auto  F auto  Img  Vis  Vid  PDF  TTS  STT");
   });
 });

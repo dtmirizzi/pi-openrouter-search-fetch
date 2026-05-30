@@ -37,6 +37,7 @@ import {
   generateImage,
   speakText,
   transcribeAudio,
+  callChatMultimodal,
 } from "./helpers";
 import type { ExtensionState } from "./helpers";
 import { DEFAULT_STATE } from "./helpers";
@@ -46,6 +47,9 @@ const FETCH_SRV  = "openrouter:web_fetch";
 const SEARCH_TOOL = "web_search";
 const FETCH_TOOL  = "web_fetch";
 const IMAGE_TOOL  = "image_generate";
+const VISION_TOOL = "image_understand";
+const VIDEO_TOOL  = "video_understand";
+const PDF_TOOL    = "pdf_read";
 const TTS_TOOL    = "tts_speak";
 const STT_TOOL    = "stt_transcribe";
 
@@ -74,7 +78,7 @@ function openSettings(
 
       const settingsList = new SettingsList(
         items,
-        Math.min(items.length + 4, 20),
+        Math.min(items.length + 4, 22),
         getSettingsListTheme(),
         (id, newValue) => {
           onChange(id, newValue);
@@ -121,6 +125,9 @@ export default function (pi: ExtensionAPI) {
     setToolActive(pi, SEARCH_TOOL, state.searchEnabled);
     setToolActive(pi, FETCH_TOOL, state.fetchEnabled);
     setToolActive(pi, IMAGE_TOOL, state.imageEnabled);
+    setToolActive(pi, VISION_TOOL, state.visionEnabled);
+    setToolActive(pi, VIDEO_TOOL, state.videoEnabled);
+    setToolActive(pi, PDF_TOOL, state.pdfEnabled);
     setToolActive(pi, TTS_TOOL, state.ttsEnabled);
     setToolActive(pi, STT_TOOL, state.sttEnabled);
     ctx.ui.setStatus("web-tools", statusLabel(state));
@@ -147,6 +154,9 @@ export default function (pi: ExtensionAPI) {
         { id: "f-enabled", label: "Web Fetch",      currentValue: state.fetchEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "f-engine",  label: "Fetch Engine",   currentValue: state.fetchEngine,  values: ["auto", "native", "exa", "openrouter", "firecrawl", "parallel"] },
         { id: "i-enabled", label: "Image Generate",  currentValue: state.imageEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "v-enabled", label: "Image Understand",currentValue: state.visionEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "d-enabled", label: "Video Understand",currentValue: state.videoEnabled ? "on" : "off", values: ["on", "off"] },
+        { id: "p-enabled", label: "PDF Read",        currentValue: state.pdfEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "t-enabled", label: "TTS (Speak)",     currentValue: state.ttsEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "r-enabled", label: "STT (Transcribe)", currentValue: state.sttEnabled ? "on" : "off", values: ["on", "off"] },
         { id: "compact",   label: "Status Bar",     currentValue: state.compactStatus ? "compact" : "verbose", values: ["verbose", "compact"] },
@@ -158,6 +168,9 @@ export default function (pi: ExtensionAPI) {
         else if (id === "f-enabled") state.fetchEnabled = val === "on";
         else if (id === "f-engine") state.fetchEngine = val;
         else if (id === "i-enabled") state.imageEnabled = val === "on";
+        else if (id === "v-enabled") state.visionEnabled = val === "on";
+        else if (id === "d-enabled") state.videoEnabled = val === "on";
+        else if (id === "p-enabled") state.pdfEnabled = val === "on";
         else if (id === "t-enabled") state.ttsEnabled = val === "on";
         else if (id === "r-enabled") state.sttEnabled = val === "on";
         else if (id === "compact") state.compactStatus = val === "compact";
@@ -464,6 +477,147 @@ export default function (pi: ExtensionAPI) {
         content: [{ type: "text", text: result.text || "(empty transcription)" }],
         details: { model, language: params.language, format: params.format },
       };
+    },
+  });
+
+  // ── image_understand tool ───────────────────────────────────────────────
+
+  pi.registerTool({
+    name: VISION_TOOL,
+    label: "Image Understand",
+    description:
+      "Analyze an image via OpenRouter vision models. " +
+      "Provide an image URL or base64 data and a prompt describing what to analyze. " +
+      "Only functional with OpenRouter models.",
+    promptGuidelines: [
+      "Use image_understand when you need to analyze or describe an image.
+      "Provide the image URL and a specific prompt about what to look for.",
+      "Works with both public URLs and base64-encoded image data.",
+    ],
+    parameters: Type.Object({
+      url: Type.String({ description: "Image URL or base64 data URL (data:image/...;base64,...)" }),
+      prompt: Type.Optional(Type.String({ description: "What to analyze (default: 'Describe this image in detail')" })),
+      model: Type.Optional(Type.String({ description: "Vision model (default: google/gemini-2.5-flash)" })),
+    }),
+
+    async execute(_id, params, signal, onUpdate, ctx) {
+      if (!isActiveModelOpenRouter(ctx)) {
+        return { content: [{ type: "text", text: "image_understand is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+      }
+      const apiKey = resolveApiKey(ctx);
+      if (!apiKey) {
+        return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
+      }
+
+      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const prompt = (params.prompt as string) || "Describe this image in detail";
+      onUpdate?.({ content: [{ type: "text", text: "Analyzing image..." }] });
+
+      const result = await callChatMultimodal(
+        apiKey,
+        prompt,
+        { type: "image_url", image_url: { url: params.url } },
+        model,
+        undefined,
+        signal,
+      );
+
+      if (!result.ok) throw new Error(`Image understanding failed: ${result.error}`);
+      return { content: [{ type: "text", text: result.text! }], details: { model } };
+    },
+  });
+
+  // ── video_understand tool ───────────────────────────────────────────────
+
+  pi.registerTool({
+    name: VIDEO_TOOL,
+    label: "Video Understand",
+    description:
+      "Analyze a video via OpenRouter. Provide a video URL (YouTube links work with Gemini models). " +
+      "Only functional with OpenRouter models.",
+    promptGuidelines: [
+      "Use video_understand when you need to analyze or summarize video content.",
+      "For Google Gemini models, YouTube links are supported.",
+    ],
+    parameters: Type.Object({
+      url: Type.String({ description: "Video URL (YouTube link for Gemini, or direct video URL)" }),
+      prompt: Type.Optional(Type.String({ description: "What to analyze (default: 'Describe what happens in this video')" })),
+      model: Type.Optional(Type.String({ description: "Video model (default: google/gemini-2.5-flash)" })),
+    }),
+
+    async execute(_id, params, signal, onUpdate, ctx) {
+      if (!isActiveModelOpenRouter(ctx)) {
+        return { content: [{ type: "text", text: "video_understand is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+      }
+      const apiKey = resolveApiKey(ctx);
+      if (!apiKey) {
+        return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
+      }
+
+      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const prompt = (params.prompt as string) || "Describe what happens in this video";
+      onUpdate?.({ content: [{ type: "text", text: "Analyzing video (this may take a while)..." }] });
+
+      const result = await callChatMultimodal(
+        apiKey,
+        prompt,
+        { type: "video_url", video_url: { url: params.url } },
+        model,
+        undefined,
+        signal,
+      );
+
+      if (!result.ok) throw new Error(`Video understanding failed: ${result.error}`);
+      return { content: [{ type: "text", text: result.text! }], details: { model } };
+    },
+  });
+
+  // ── pdf_read tool ───────────────────────────────────────────────────────
+
+  pi.registerTool({
+    name: PDF_TOOL,
+    label: "PDF Read",
+    description:
+      "Extract and analyze content from a PDF via OpenRouter. Provide a PDF URL. " +
+      "Only functional with OpenRouter models.",
+    promptGuidelines: [
+      "Use pdf_read when you need to extract or analyze content from a PDF document.",
+      "Provide the PDF URL and optionally specify what to extract or summarize.",
+      "By default uses cloudflare-ai engine (free) for text extraction.",
+    ],
+    parameters: Type.Object({
+      url: Type.String({ description: "URL of the PDF document" }),
+      prompt: Type.Optional(Type.String({ description: "What to extract/analyze (default: 'Summarize this document')" })),
+      model: Type.Optional(Type.String({ description: "Model (default: google/gemini-2.5-flash)" })),
+      engine: Type.Optional(Type.String({ description: "PDF engine: cloudflare-ai (default, free), mistral-ocr (scanned docs), or native" })),
+    }),
+
+    async execute(_id, params, signal, onUpdate, ctx) {
+      if (!isActiveModelOpenRouter(ctx)) {
+        return { content: [{ type: "text", text: "pdf_read is only available with OpenRouter models." }], details: { error: "wrong_provider" } };
+      }
+      const apiKey = resolveApiKey(ctx);
+      if (!apiKey) {
+        return { content: [{ type: "text", text: "No OpenRouter API key found." }], details: { error: "no_api_key" } };
+      }
+
+      const model = (params.model as string) || "google/gemini-2.5-flash";
+      const prompt = (params.prompt as string) || "Summarize this document";
+      const engine = (params.engine as string) || "cloudflare-ai";
+      onUpdate?.({ content: [{ type: "text", text: `Reading PDF: ${params.url}...` }] });
+
+      const plugins = [{ id: "file-parser", pdf: { engine } }];
+      const result = await callChatMultimodal(
+        apiKey,
+        prompt,
+        { type: "file", file: { filename: "document.pdf", file_data: params.url } },
+        model,
+        plugins,
+        signal,
+      );
+
+      if (!result.ok) throw new Error(`PDF read failed: ${result.error}`);
+      return { content: [{ type: "text", text: result.text! }], details: { model, engine } };
     },
   });
 }

@@ -18,6 +18,9 @@ export interface ExtensionState {
   fetchEnabled: boolean;
   fetchEngine: string;
   imageEnabled: boolean;
+  visionEnabled: boolean;
+  videoEnabled: boolean;
+  pdfEnabled: boolean;
   ttsEnabled: boolean;
   sttEnabled: boolean;
   compactStatus: boolean;
@@ -29,6 +32,9 @@ export const DEFAULT_STATE: ExtensionState = {
   fetchEnabled: true,
   fetchEngine: "auto",
   imageEnabled: false,
+  visionEnabled: false,
+  videoEnabled: false,
+  pdfEnabled: false,
   ttsEnabled: false,
   sttEnabled: false,
   compactStatus: false,
@@ -108,6 +114,9 @@ export function statusLabel(state: ExtensionState): string {
     if (state.fetchEnabled) parts.push(`F ${state.fetchEngine}`);
     else parts.push("F off");
     if (state.imageEnabled) parts.push("Img");
+    if (state.visionEnabled) parts.push("Vis");
+    if (state.videoEnabled) parts.push("Vid");
+    if (state.pdfEnabled) parts.push("PDF");
     if (state.ttsEnabled) parts.push("TTS");
     if (state.sttEnabled) parts.push("STT");
     return parts.join("  ");
@@ -115,7 +124,10 @@ export function statusLabel(state: ExtensionState): string {
   const parts: string[] = [];
   parts.push(state.searchEnabled ? `search:on(${state.searchEngine})` : "search:off");
   parts.push(state.fetchEnabled ? `fetch:on(${state.fetchEngine})` : "fetch:off");
-  if (state.imageEnabled) parts.push("image:on");
+  if (state.imageEnabled) parts.push("img:on");
+  if (state.visionEnabled) parts.push("vision:on");
+  if (state.videoEnabled) parts.push("video:on");
+  if (state.pdfEnabled) parts.push("pdf:on");
   if (state.ttsEnabled) parts.push("tts:on");
   if (state.sttEnabled) parts.push("stt:on");
   return parts.join(" ");
@@ -299,6 +311,50 @@ export async function transcribeAudio(
     const data = (await res.json()) as Record<string, unknown>;
     const txt = data["text"] as string | undefined;
     return { ok: true, text: txt || "" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
+}
+
+// ── Multimodal input helpers ────────────────────────────────────────────────
+
+/**
+ * Call OpenRouter chat completions with a multimodal content block (image_url,
+ * video_url, or file). Sends to a compatible model and returns the assistant's
+ * text response.
+ */
+export async function callChatMultimodal(
+  apiKey: string,
+  prompt: string,
+  contentBlock: Record<string, unknown>,
+  model: string,
+  plugins?: Array<Record<string, unknown>>,
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; text?: string; error?: string }> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [{ role: "user", content: [{ type: "text", text: prompt }, contentBlock] }],
+    max_tokens: 4096,
+  };
+  if (plugins) body["plugins"] = plugins;
+
+  try {
+    const res = await fetch(`${OPENROUTER_API}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${text}` };
+    }
+    const data = (await res.json()) as Record<string, unknown>;
+    const choices = data["choices"] as Array<Record<string, unknown>> | undefined;
+    const msg = choices?.[0]?.["message"] as Record<string, unknown> | undefined;
+    const txt = msg?.["content"] as string | null | undefined;
+    return { ok: true, text: txt || "(no response)" };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, error: msg };

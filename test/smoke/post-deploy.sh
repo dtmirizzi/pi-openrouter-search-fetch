@@ -18,7 +18,7 @@ echo "==> 1. Installing $PACKAGE@latest"
 npm install "$PACKAGE@latest" 2>&1 | tail -3
 
 # Verify expected files exist
-for f in src/index.ts CHANGELOG.md README.md package.json; do
+for f in index.ts src/index.ts CHANGELOG.md README.md package.json; do
   if [ ! -f "$PKG_DIR/$f" ]; then
     echo "FAIL: Expected $f not found"
     exit 1

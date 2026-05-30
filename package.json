@@ -20,6 +20,7 @@
     "node": ">=18"
   },
   "files": [
+    "index.ts",
     "src/index.ts",
     "src/helpers.ts",
     "CHANGELOG.md",
@@ -39,7 +40,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./index.ts"
     ]
   },
   "peerDependencies": {
